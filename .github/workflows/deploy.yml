@@ -1,0 +1,59 @@
+name: Deploy to Homelab Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script_stop: true
+          script: |
+            # Define repository path
+            REPO_PATH="$HOME/Homelab"
+
+            # Check if stow is installed, if not install it
+            if ! command -v stow &> /dev/null; then
+              echo "Installing stow..."
+              sudo apt-get update
+              sudo apt-get install -y stow
+            fi
+
+            # Clone repo if it doesn't exist, otherwise pull latest changes
+            if [ ! -d "$REPO_PATH" ]; then
+              echo "Cloning repository..."
+              git clone https://github.com/${{ github.repository }} "$REPO_PATH"
+            else
+              echo "Updating repository..."
+              cd "$REPO_PATH"
+              git fetch origin
+              git reset --hard origin/main
+              git clean -fd
+            fi
+
+            # Navigate to repo
+            cd "$REPO_PATH"
+
+            # Stow dotfiles
+            if [ -d "dotfiles" ]; then
+              echo "Stowing dotfiles..."
+              cd dotfiles
+              # Unstow first to avoid conflicts, then restow
+              stow -D */ 2>/dev/null || true
+              stow */
+              echo "Dotfiles stowed successfully!"
+            else
+              echo "Warning: dotfiles directory not found in $REPO_PATH"
+            fi
+
+            echo "Deployment completed successfully!"

@@ -1,6 +1,6 @@
 # Homelab Configuration Repository
 
-A personal homelab setup repository containing dotfiles, scripts, and configurations for managing a Ubuntu minimal server environment.
+A personal homelab setup repository containing dotfiles and configurations for managing a Ubuntu minimal server environment.
 
 ## Overview
 
@@ -58,24 +58,35 @@ This repository serves as the central storage for my homelab infrastructure, fea
    ```
 
 5. **Deploy Dotfiles**
-   ```bash
-   # Copy dotfiles to appropriate locations
-   cp -r dots/* ~/
-   source ~/.bashrc
-   ```
+    ```bash
+    # Copy dotfiles to appropriate locations
+    cp -r dotfiles/* ~/
+    source ~/.bashrc
+    ```
 
 ## Repository Structure
 
 ```
 homelab/
-├── dots/                    # Dotfiles and configurations
+├── .github/
+│   └── workflows/
+│       └── deploy.yml
+├── docs/                    # Documentation
+│   └── systemd-networkd.md # Network setup guide
+├── dotfiles/                # Dotfiles and configurations
 │   ├── .bashrc             # Main bash configuration
 │   └── .config/
 │       └── bash/           # Modular bash config
-├── docs/                    # Documentation
-│   └── systemd-networkd.md # Network setup guide
-├── scripts/                 # Utility scripts
-└── AGENTS.md               # Agent guidelines for development
+│           ├── functions/
+│           │   ├── system.bash
+│           │   └── utils.bash
+│           ├── aliases.bash
+│           ├── keybinds.bash
+│           └── prompt.bash
+├── .gitignore
+├── LICENSE
+├── AGENTS.md               # Agent guidelines for development
+└── README.md               # This file
 ```
 
 ## Networking Setup
