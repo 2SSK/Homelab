@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Deploy to Server
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -19,41 +19,57 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           script_stop: true
           script: |
+            set -e
+            echo "Starting deployment script..."
+
             # Define repository path
             REPO_PATH="$HOME/Homelab"
+            echo "Repository path set to: $REPO_PATH"
 
             # Check if stow is installed, if not install it
+            echo "Checking for stow installation..."
             if ! command -v stow &> /dev/null; then
               echo "Installing stow..."
               sudo apt-get update
               sudo apt-get install -y stow
+              echo "Stow installed successfully."
+            else
+              echo "Stow is already installed."
             fi
 
             # Clone repo if it doesn't exist, otherwise pull latest changes
+            echo "Checking repository existence..."
             if [ ! -d "$REPO_PATH" ]; then
               echo "Cloning repository..."
               git clone https://github.com/${{ github.repository }} "$REPO_PATH"
+              echo "Repository cloned."
             else
               echo "Updating repository..."
               cd "$REPO_PATH"
               git fetch origin
               git reset --hard origin/main
               git clean -fd
+              echo "Repository updated."
             fi
 
             # Navigate to repo
+            echo "Navigating to repository..."
             cd "$REPO_PATH"
+            echo "Current directory: $(pwd)"
 
             # Stow dotfiles
+            echo "Checking for dotfiles directory..."
             if [ -d "dotfiles" ]; then
               echo "Stowing dotfiles..."
               cd dotfiles
-              # Unstow first to avoid conflicts, then restow
+              echo "Unstowing existing packages..."
               stow -D */ 2>/dev/null || true
+              echo "Restowing packages..."
               stow */
               echo "Dotfiles stowed successfully!"
             else
               echo "Warning: dotfiles directory not found in $REPO_PATH"
+              exit 1
             fi
 
             echo "Deployment completed successfully!"
