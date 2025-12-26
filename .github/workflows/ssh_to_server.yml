@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: SSH to Server
-        uses: appleboy/ssh-action@v1.21
+        uses: appleboy/ssh-action@v1.2.1
         with:
           host: ${{vars.SERVER_HOST}}
           username: ${{vars.SERVER_USER}}
