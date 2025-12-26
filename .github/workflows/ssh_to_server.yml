@@ -1,26 +1,26 @@
-name: CI with Tailscale SSH
+name: SSH to Server
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   deploy:
+    name: SSH to Remote Server
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Tailscale
-        run: curl -fsSL https://tailscale.com/install.sh | sh
+      - name: SSH to Server
+        uses: appleboy/ssh-action@v1.21
+        with:
+          host: ${{vars.SERVER_HOST}}
+          username: ${{vars.SERVER_USER}}
+          key: ${{secrets.SSH_PRIVATE_KEY}}
+          port: ${{vars.SERVER_PORT}}
+          script: |
+            whoami
+            hostname
+            ff
 
-      - name: Start Tailscale
-        env:
-          TS_AUTH_KEY: ${{ secrets.TS_AUTH_KEY }}
-        run: sudo tailscale up --authkey=$TS_AUTH_KEY --hostname=gh-ci-${{ github.run_id }}
-
-      - name: Verify connection
-        run: tailscale status
-
-      - name: SSH to server
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh -i ~/.ssh/id_rsa -p ${{ secrets.SERVER_PORT }} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'echo "SSH connection successful to $(hostname) at $(date)"'
+            echo "SSH connection successful!"
