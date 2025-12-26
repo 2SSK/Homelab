@@ -1,0 +1,22 @@
+name: CI with Tailscale SSH
+
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Tailscale
+        run: curl -fsSL https://tailscale.com/install.sh | sh
+
+      - name: Start Tailscale
+        env:
+          TS_AUTH_KEY: ${{ secrets.TS_AUTH_KEY }}
+        run: sudo tailscale up --authkey=$TS_AUTH_KEY --hostname=gh-ci-${{ github.run_id }}
+
+      - name: Verify connection
+        run: tailscale status
+
+      - name: SSH to server
+        run: ssh ubuntu@server-hostname 'echo Hello from CI'
