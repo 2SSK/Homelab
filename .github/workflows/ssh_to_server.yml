@@ -1,4 +1,31 @@
-name: SSH to Server
+# name: SSH to Server
+#
+# on:
+#   push:
+#     branches:
+#       - main
+#
+# jobs:
+#   deploy:
+#     name: SSH to Remote Server
+#     runs-on: ubuntu-latest
+#
+#     steps:
+#       - name: SSH to Server
+#         uses: appleboy/ssh-action@v1.2.1
+#         with:
+#           host: ${{vars.SERVER_HOST}}
+#           username: ${{vars.SERVER_USER}}
+#           key: ${{secrets.SSH_PRIVATE_KEY}}
+#           port: ${{vars.SERVER_PORT}}
+#           script: |
+#             whoami
+#             hostname
+#             ff
+#
+#             echo "SSH connection successful!"
+
+name: SSH to Tailscale Node
 
 on:
   push:
@@ -7,20 +34,32 @@ on:
 
 jobs:
   deploy:
-    name: SSH to Remote Server
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH to Server
-        uses: appleboy/ssh-action@v1.2.1
-        with:
-          host: ${{vars.SERVER_HOST}}
-          username: ${{vars.SERVER_USER}}
-          key: ${{secrets.SSH_PRIVATE_KEY}}
-          port: ${{vars.SERVER_PORT}}
-          script: |
-            whoami
-            hostname
-            ff
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
 
-            echo "SSH connection successful!"
+      - name: Start Tailscale and authenticate
+        env:
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+        run: |
+          sudo tailscaled --state=/tmp/tailscale.state &   # start daemon in background
+          sleep 2  # brief wait for daemon
+          sudo tailscale up --authkey=$TAILSCALE_AUTH_KEY --hostname=gh-runner-${{ github.run_id }} --accept-routes
+          until tailscale status | grep -q "Tailscale is up"; do sleep 1; done
+
+      - name: Verify Tailscale connectivity
+        run: tailscale status
+
+      - name: SSH to homelab
+        env:
+          SERVER_USER: ${{ vars.SERVER_USER }}
+          SERVER_HOST: ${{ vars.SERVER_HOST }}
+          SERVER_PORT: ${{ vars.SERVER_PORT }}
+        run: |
+          tailscale ssh -p $SERVER_PORT $SERVER_USER@$SERVER_HOST "whoami && hostname && echo 'SSH connection successful!'"
+
+      - name: Cleanup Tailscale
+        run: sudo tailscale logout
