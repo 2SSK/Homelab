@@ -20,4 +20,4 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
       - name: SSH into server
         run: |
-          ssh deploy@${{ secrets.REMOTE_HOST }} "echo 'Successfully connected to server'; hostname; uptime"
+          ssh ubuntu@${{ secrets.REMOTE_HOST }} "echo 'Successfully connected to server'; hostname; uptime"
