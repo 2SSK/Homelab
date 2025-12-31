@@ -16,7 +16,7 @@ parse_git_branch(){
   git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
 }
 
-# Set prompt with git  branch
+# Set prompt with git branch
 if [[ -n "$SSH_CLIENT" ]]; then
   ssh_message="${RED}-ssh${ENDC}"
 else
@@ -37,4 +37,4 @@ battery_status() {
 }
 
 # Enhanced prompt with git branch and battery
-PS1="${GRAY}\t ${GREEN}\u${ssh_message} ${WHITE}at ${YELLOW}\h ${WHITE}in ${BLUE}\w${CYAN}\$(parse_git_branch) ${MAGENTA}\$(battery_status)\n${CYAN}\$${ENDC} "
+PS1="${GREEN}\u${ssh_message} ${WHITE}at ${YELLOW}\h ${WHITE}in ${BLUE}\w${CYAN}\$(parse_git_branch)\n${MAGENTA}\$(battery_status) ${CYAN}\$${ENDC} "
