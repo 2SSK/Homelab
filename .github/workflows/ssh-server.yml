@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  ssh-server:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,8 +26,7 @@ jobs:
           tailscale status
           ping -c 3 ${{ secrets.TAILSCALE_SERVER_IP }}
 
-      # Step 5: SSH and deploy
-      - name: SSH Deploy
+      - name: SSH into Tailscale Server
         uses: appleboy/ssh-action@v0.1.8
         with:
           host: ${{ secrets.TAILSCALE_SERVER_IP }}
