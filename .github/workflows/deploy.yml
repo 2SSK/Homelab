@@ -4,34 +4,26 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "dotfiles/**"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install Tailscale
-        run: |
-          curl -fsSL https://tailscale.com/install.sh | sh
-
-      - name: Connect to Tailscale
-        run: |
-          sudo tailscale up --authkey ${{ secrets.TAILSCALE_AUTH_KEY }}
-
-      - name: Test Tailscale connection
-        run: |
-          tailscale status
-          ping -c 3 ${{ secrets.TAILSCALE_SERVER_IP }}
-
-      - name: SSH into Tailscale Server
-        uses: appleboy/ssh-action@v0.1.8
+      - name: Deploy and Stow Dotfiles
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.TAILSCALE_SERVER_IP }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/Homelab
+            cd /home/${{ secrets.SSH_USER }}/Homelab || exit 1
             git pull origin main
+
+            # Stow dotfiles
+            cd dotfiles || exit 1
+            stow --restow */
+
+            echo "Dotfiles deployed and stowed successfully"
