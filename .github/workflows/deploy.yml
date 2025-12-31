@@ -22,8 +22,13 @@ jobs:
             cd /home/${{ secrets.SSH_USER }}/Homelab || exit 1
             git pull origin main
 
-            # Stow dotfiles
-            cd dotfiles || exit 1
-            stow --restow */
+            # Stow dotfiles if directory exists
+            if [ -d "dotfiles" ]; then
+              cd dotfiles
+              stow --restow */
+              echo "Dotfiles stowed successfully"
+            else
+              echo "No dotfiles directory found, skipping stow"
+            fi
 
-            echo "Dotfiles deployed and stowed successfully"
+            echo "Deployment completed"
