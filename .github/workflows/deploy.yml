@@ -1,4 +1,4 @@
-name: SSH to Tailscale Server
+name: Deploy to Tailscale Server
 
 on:
   push:
@@ -33,6 +33,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            whoami
-            hostname
-            hostname -I
+            cd /home/${{ secrets.SSH_USER }}/homelab
+            git pull origin main
