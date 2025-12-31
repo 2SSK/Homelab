@@ -32,7 +32,7 @@ battery_status() {
     
     if [ -d "$bat_path" ]; then
         local cap=$(cat "$bat_path/capacity")
-        echo "⚡ ${cap}%"
+        echo "⚡${cap}%"
     fi
 }
 
