@@ -39,7 +39,7 @@ jobs:
             # Stow dotfiles if directory exists
             if [ -d "dotfiles" ]; then
               cd dotfiles
-              stow --restow */
+              stow .
               echo "Dotfiles stowed successfully"
             else
               echo "No dotfiles directory found, skipping stow"
