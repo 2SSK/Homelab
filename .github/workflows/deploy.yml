@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  ssh-server:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -33,5 +33,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/homelab
+            cd /home/${{ secrets.SSH_USER }}/Homelab
             git pull origin main
