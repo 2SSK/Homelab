@@ -13,7 +13,18 @@ ENDC="\[\e[0m\]"
 
 # Git prompt function
 parse_git_branch(){
-  git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+  if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    return
+  fi
+  
+  local branch=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
+  local status=$(git status --porcelain 2> /dev/null)
+  
+  if [ -z "$status" ]; then
+    echo " (${branch} ✓)"  # Clean
+  else
+    echo " (${branch} ✗)"  # Dirty
+  fi
 }
 
 # Set prompt with git branch

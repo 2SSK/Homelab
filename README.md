@@ -1,118 +1,56 @@
-# Homelab Configuration Repository
+# Homelab
 
-A personal homelab setup repository containing dotfiles and configurations for managing a Ubuntu minimal server environment.
+A learning-focused homelab repository for Ubuntu server management, featuring custom dotfiles and a CLI tool for installations and maintenance.
 
-## Overview
+## Features
 
-This repository serves as the central storage for my homelab infrastructure, featuring:
-
-- Custom bash configuration with modular setup
-- systemd-networkd with USB tethering for internet connectivity
-- Tailscale for secure private SSH networking
-- Organized dotfiles and utility scripts
-
-## Technologies Used
-
-- **OS**: Ubuntu Minimal Image
-- **Networking**: systemd-networkd with USB tethering
-- **VPN**: Tailscale for private network access
-- **Shell**: Custom bash configuration with modular functions
-- **Infrastructure**: Git-based configuration management
+- **CLI Tool**: `homelab` command for managing Docker installs and USB tethering updates
+- **Dotfiles**: Modular bash configuration with functions, aliases, and keybindings
+- **Networking**: systemd-networkd setup for USB tethering
+- **Documentation**: Guides for network configuration
 
 ## Quick Start
 
-### Prerequisites
-
-- Ubuntu Server (minimal installation)
-- USB cable for tethering
-- Android/iOS device with internet connection
-
-### Initial Setup
-
-1. **Install Ubuntu Minimal**
-
-   ```bash
-   # Download and install Ubuntu minimal image
-   # Configure basic system settings
-   ```
-
-2. **Clone Repository**
+1. **Clone the repo**:
 
    ```bash
    git clone https://github.com/yourusername/homelab.git
    cd homelab
    ```
 
-3. **Setup Networking**
+2. **Install the CLI**:
 
    ```bash
-   # Configure systemd-networkd for USB tethering
-   # See docs/systemd-networkd.md for detailed setup
+   make install
    ```
 
-4. **Install Tailscale**
+3. **Use the CLI**:
 
    ```bash
-   curl -fsSL https://tailscale.com/install.sh | sh
-   sudo tailscale up
+   homelab help
+   homelab install docker
+   homelab maintain tethering
    ```
 
-5. **Deploy Dotfiles**
-    ```bash
-    # Copy dotfiles to appropriate locations
-    cp -r dotfiles/* ~/
-    source ~/.bashrc
-    ```
+4. **Deploy dotfiles**:
+   ```bash
+   cp -r dotfiles ~/
+   cd ~/dotfiles
+   stow .
+   ```
 
-## Repository Structure
+## Learning Focus
 
-```
-homelab/
-├── .github/
-│   └── workflows/
-│       └── deploy.yml
-├── docs/                    # Documentation
-│   └── systemd-networkd.md # Network setup guide
-├── dotfiles/                # Dotfiles and configurations
-│   ├── .bashrc             # Main bash configuration
-│   └── .config/
-│       └── bash/           # Modular bash config
-│           ├── functions/
-│           │   ├── system.bash
-│           │   └── utils.bash
-│           ├── aliases.bash
-│           ├── keybinds.bash
-│           └── prompt.bash
-├── .gitignore
-├── LICENSE
-├── AGENTS.md               # Agent guidelines for development
-└── README.md               # This file
-```
+This repo demonstrates:
 
-## Networking Setup
-
-### USB Tethering with systemd-networkd
-
-- Uses systemd-networkd for network management
-- Automatic USB device detection
-- Persistent configuration across reboots
-
-### Tailscale VPN
-
-- Private networking for secure SSH access
-- Mesh networking between devices
-- Zero-config VPN setup
-
-## Bash Configuration
-
-Custom modular bash setup featuring:
-
-- Organized aliases by category
-- Utility functions for system management
-- Keybindings and prompt customization
-- Conditional sourcing for portability
+- Bash scripting and CLI design
+- Systemd network configuration
+- Dotfile management
+- Git-based infrastructure
+- Ubuntu server administration
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License</content>
+<parameter name="filePath">/home/ssk/Code/Projects/building/Homelab/README.md
 
