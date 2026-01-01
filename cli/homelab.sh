@@ -5,7 +5,7 @@
 
 set -e
 
-SCRIPT_DIR="/home/ssk/Code/Projects/building/Homelab/cli"
+CLI_DIR="$HOME/Homelab/cli"
 
 # Function to display help
 show_help() {
@@ -44,7 +44,7 @@ case $command in
         case $subcommand in
             docker)
                 echo "Installing Docker..."
-                bash "$SCRIPT_DIR/install/docker.sh"
+                bash "$CLI_DIR/install/docker.sh"
                 echo "Docker installation completed."
                 ;;
             "")
@@ -63,7 +63,7 @@ case $command in
         case $subcommand in
             tethering)
                 echo "Updating tethering configuration..."
-                bash "$SCRIPT_DIR/maintain/update-tethering.sh"
+                bash "$CLI_DIR/maintain/update-tethering.sh"
                 echo "Tethering update completed."
                 ;;
             "")
