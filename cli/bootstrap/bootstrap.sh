@@ -189,9 +189,9 @@ harden_ssh() {
 setup_tailscale() {
     log_info "Phase 4: Setting up Tailscale..."
 
-    # Check if tailscale is already installed and running
-    if command_exists tailscale && service_status tailscaled; then
-        log_info "Tailscale already installed and running"
+    # Check if tailscale is already connected
+    if command_exists tailscale && tailscale status >/dev/null 2>&1; then
+        log_info "Tailscale already connected"
         return 0
     fi
 
@@ -215,29 +215,57 @@ setup_tailscale() {
         log_info "Tailscale already installed"
     fi
 
-    # Get auth key from environment or prompt
-    local auth_key="${TAILSCALE_AUTH_KEY:-}"
-    if [[ -z "$auth_key" ]]; then
-        read -r -p "Enter Tailscale auth key: " auth_key
-    fi
-
-    if [[ -z "$auth_key" ]]; then
-        log_error "No Tailscale auth key provided"
-        return 1
-    fi
-
-    # Start Tailscale with auth key
-    log_info "Starting Tailscale..."
-    sudo tailscale up --auth-key="$auth_key" --accept-routes
-    log_success "Tailscale started and authenticated"
-
-    # Enable Tailscale service
+    # Enable Tailscale service if not already
     if ! service_status tailscaled; then
         sudo systemctl enable tailscaled
         sudo systemctl start tailscaled
         log_success "Tailscale service enabled"
     else
         log_info "Tailscale service already enabled"
+    fi
+
+    # Determine authentication method
+    local auth_key="${TAILSCALE_AUTH_KEY:-}"
+    local use_auth_key=false
+    if [[ -n "$auth_key" ]]; then
+        use_auth_key=true
+        log_info "Using auth key from environment variable"
+    else
+        read -r -p "Enter Tailscale auth key (leave empty for browser authentication): " auth_key
+        if [[ -n "$auth_key" ]]; then
+            use_auth_key=true
+            log_info "Using provided auth key"
+        else
+            log_info "No auth key provided, proceeding with browser authentication"
+        fi
+    fi
+
+    # Build tailscale up command
+    local cmd="sudo tailscale up --accept-routes"
+
+    if [[ "$use_auth_key" == true ]]; then
+        cmd="$cmd --auth-key=\"$auth_key\""
+    fi
+
+    # Check for advertise exit node
+    local advertise_exit="${TAILSCALE_ADVERTISE_EXIT_NODE:-}"
+    if [[ -z "$advertise_exit" ]]; then
+        read -r -p "Advertise as exit node? (y/N): " advertise_exit
+    fi
+
+    if [[ "$advertise_exit" =~ ^[Yy]$ ]] || [[ "$advertise_exit" == "yes" ]] || [[ "$advertise_exit" == "true" ]] || [[ "$advertise_exit" == "1" ]]; then
+        cmd="$cmd --advertise-exit-node"
+        log_info "Advertising as exit node"
+    fi
+
+    # Execute tailscale up
+    log_info "Starting Tailscale..."
+    eval "$cmd"
+
+    if [[ "$use_auth_key" == true ]]; then
+        log_success "Tailscale started and authenticated using auth key"
+    else
+        log_success "Tailscale started - browser authentication initiated. Complete authentication at the provided URL."
     fi
 }
 
