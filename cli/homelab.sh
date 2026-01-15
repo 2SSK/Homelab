@@ -15,11 +15,12 @@ Homelab CLI - Manage your homelab installations and maintenance
 USAGE:
     homelab <COMMAND> [SUBCOMMAND]
 
-COMMANDS:
-    install     Install software and scripts
-    maintain    Perform maintenance tasks
-    remove      Remove installed software (not implemented)
-    help        Show this help message
+ COMMANDS:
+     bootstrap   Bootstrap a fresh Ubuntu server for homelab use
+     install     Install software and scripts
+     maintain    Perform maintenance tasks
+     remove      Remove installed software (not implemented)
+     help        Show this help message
 
 INSTALL SUBCOMMANDS:
     docker      Install Docker and Docker Compose
@@ -28,6 +29,7 @@ MAINTAIN SUBCOMMANDS:
     tethering   Update USB tethering network configuration
 
 EXAMPLES:
+    homelab bootstrap
     homelab install docker
     homelab maintain tethering
     homelab help
@@ -40,6 +42,11 @@ command=$1
 subcommand=$2
 
 case $command in
+    bootstrap)
+        echo "Bootstrapping homelab server..."
+        bash "$CLI_DIR/bootstrap/bootstrap.sh"
+        echo "Bootstrap completed successfully."
+        ;;
     install)
         case $subcommand in
             docker)
