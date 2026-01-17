@@ -15,123 +15,16 @@ trap 'echo "Error occurred at line $LINENO. Check $LOG_FILE for details." >&2' E
 # Source utility functions
 source "/home/ssk/Code/Projects/building/Homelab/cli/libs/utils.sh"
 
-# Phase 1: System Update & Base Packages
-install_base_packages() {
-    log_info "Phase 1: Installing base packages..."
-
-    # Update package lists
-    if ! sudo apt update -y; then
-        log_error "Failed to update package lists"
-        return 1
-    fi
-
-    # Upgrade system
-    if ! sudo apt upgrade -y; then
-        log_error "Failed to upgrade system packages"
-        return 1
-    fi
-
-    # Install base packages
-    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential fzf ripgrep tree xclip stow)
-
-    for package in "${packages[@]}"; do
-        if ! dpkg -l | grep -q "^ii  $package "; then
-            log_info "Installing $package..."
-            if ! sudo apt install -y "$package"; then
-                log_error "Failed to install $package"
-                return 1
-            fi
-        else
-            log_info "$package already installed"
-        fi
-    done
-
-    log_success "Base packages installed successfully"
-}
-
-# Phase 2: systemd-networkd Setup
-setup_networkd() {
-    log_info "Phase 2: Setting up systemd-networkd..."
-    
-    local force_networkd="${FORCE_NETWORKD:-false}"
-    
-    # Detect USB interface
-    local usb_interface=""
-    for iface in /sys/class/net/*; do
-        iface_name=$(basename "$iface")
-        if [[ "$iface_name" == usb* ]] || [[ "$iface_name" == enx* ]]; then
-            usb_interface="$iface_name"
-            break
-        fi
-    done
-    
-    if [[ -z "$usb_interface" ]]; then
-        log_warning "No USB interface \(usb0 or enx*\) detected. Skipping networkd setup."
-        return 0
-    fi
-    
-    log_info "Detected USB interface: $usb_interface"
-    
-    # Check if systemd-networkd already configured
-    if [[ "$force_networkd" == "true" ]]; then
-        log_info "Force flag set. Will reconfigure systemd-networkd."
-    elif systemctl is-enabled systemd-networkd >/dev/null 2>&1 && \
-       systemctl is-active systemd-networkd >/dev/null 2>&1 && \
-       [[ -f "/etc/systemd/network/10-usb.network" ]]; then
-        log_info "systemd-networkd already configured and running. Skipping..."
-        return 0
-    fi
-    
-    # Create network config if it does not exist
-    local network_file="/etc/systemd/network/10-usb.network"
-    if [[ ! -f "$network_file" ]]; then
-        log_info "Creating $network_file..."
-        sudo tee "$network_file" > /dev/null << EOF
-[Match]
-Name=$usb_interface
-
-[Network]
-DHCP=yes
-EOF
-        log_success "Network configuration created"
-    else
-        log_info "Network configuration already exists"
-    fi
-    
-    # Enable systemd-networkd if not already enabled
-    if ! service_status systemd-networkd; then
-        log_info "Enabling systemd-networkd..."
-        sudo systemctl enable systemd-networkd
-        sudo systemctl start systemd-networkd
-        log_success "systemd-networkd enabled and started"
-    else
-        log_info "systemd-networkd already enabled and running"
-    fi
-
-    # Enable systemd-resolved if not already enabled
-    if ! service_status systemd-resolved; then
-        log_info "Enabling systemd-resolved..."
-        sudo systemctl enable systemd-resolved
-        sudo systemctl start systemd-resolved
-        log_success "systemd-resolved enabled and started"
-    else
-        log_info "systemd-resolved already enabled and running"
-    fi
-
-    # Link resolv.conf if not already linked
-    if [[ ! -L /etc/resolv.conf ]] || [[ "$(readlink /etc/resolv.conf)" != "/run/systemd/resolve/stub-resolv.conf" ]]; then
-        log_info "Linking resolv.conf to systemd-resolved..."
-        sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
-        log_success "resolv.conf linked"
-    else
-        log_info "resolv.conf already linked correctly"
-    fi
-
-    # Bring interface up
-    log_info "Bringing $usb_interface up..."
-    sudo ip link set "$usb_interface" up
-    log_success "Network interface brought up"
-}
+# Load phase modules
+source "$(dirname "${BASH_SOURCE[0]}")/phases/packages.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/networkd.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/ssh.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/tailscale.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/dotfiles.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/vim.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/cli.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/docker.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/phases/verify.sh"
 
 # Phase 3: SSH Hardening
 harden_ssh() {
@@ -444,15 +337,13 @@ install_cli() {
     
     # CLI script is in same directory as bootstrap.sh
     local target_script="${bootstrap_dir}/cli/homelab.sh"
-    
+
     # Check if target script exists
     if [[ ! -f "$target_script" ]]; then
         log_error "CLI script not found at: $target_script"
         log_info "Please ensure that Homelab repository is properly located at $bootstrap_dir"
         return 1
     fi
-
-    local target_script="${script_dir}/cli/homelab.sh"
 
     # Check if the target script exists
     if [[ ! -f "$target_script" ]]; then
