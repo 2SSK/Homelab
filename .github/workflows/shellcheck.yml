@@ -1,21 +1,17 @@
 name: ShellCheck
 
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - '**.sh'
-      - '.github/workflows/shellcheck.yml'
-  pull_request:
-    branches: [main, master]
-    paths:
-      - '**.sh'
-      - '.github/workflows/shellcheck.yml'
+  workflow_run:
+    workflows: ["Deploy to Tailscale Server"]
+    types:
+      - completed
+    branches: [main]
 
 jobs:
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     steps:
       - name: Checkout repository

@@ -54,8 +54,8 @@ EOF
 }
 
 # Main command parsing
-command=$1
-subcommand=$2
+command=${1:-}
+subcommand=${2:-}
 
 case $command in
     bootstrap)
