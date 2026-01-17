@@ -150,6 +150,4 @@ nnoremap <leader>e :Lexplore<CR>
 " ==================================================
 
 syntax on
-set background=dark
-colorscheme wildcharm
 set termguicolors

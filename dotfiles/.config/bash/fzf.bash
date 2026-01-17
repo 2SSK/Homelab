@@ -3,6 +3,15 @@
 # Exit if fzf not installed
 command -v fzf >/dev/null 2>&1 || return 0
 
+# Source system fzf keybindings and completion (from apt package)
+if [[ -f /usr/share/doc/fzf/examples/key-bindings.bash ]]; then
+    source /usr/share/doc/fzf/examples/key-bindings.bash 2>/dev/null
+fi
+
+if [[ -f /usr/share/doc/fzf/examples/completion.bash ]]; then
+    source /usr/share/doc/fzf/examples/completion.bash 2>/dev/null
+fi
+
 # Default FZF options
 export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border --info=inline --bind=ctrl-d:half-page-down,ctrl-u:half-page-up'
 

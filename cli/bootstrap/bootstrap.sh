@@ -31,8 +31,8 @@ install_base_packages() {
         return 1
     fi
 
-    # Install base packages (includes fzf and related tools for fuzzy finding)
-    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential fzf fd-find ripgrep bat tree xclip stow)
+    # Install base packages
+    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential fzf tree xclip stow)
 
     for package in "${packages[@]}"; do
         if ! dpkg -l | grep -q "^ii  $package "; then
@@ -46,29 +46,15 @@ install_base_packages() {
         fi
     done
 
-    # Ensure fzf is properly installed via git clone method for better integration
-    # This provides better shell bindings and completion than package installation
-    if [[ -d "$HOME/.fzf" ]]; then
-        log_info "fzf already installed via git clone"
-    else
-        log_info "Installing fzf via git clone..."
-        if git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf; then
-            # Run fzf install with --no-update-rc to avoid modifying .bashrc directly
-            # We handle fzf sourcing in our dotfiles instead
-            ~/.fzf/install --all --no-update-rc
-            log_success "fzf installed via git clone"
-        else
-            log_warning "Failed to clone fzf from git, package installation may be sufficient"
-        fi
-    fi
-
     log_success "Base packages installed successfully"
 }
 
 # Phase 2: systemd-networkd Setup
 setup_networkd() {
     log_info "Phase 2: Setting up systemd-networkd..."
-
+    
+    local force_networkd="${FORCE_NETWORKD:-false}"
+    
     # Detect USB interface
     local usb_interface=""
     for iface in /sys/class/net/*; do
@@ -78,14 +64,24 @@ setup_networkd() {
             break
         fi
     done
-
+    
     if [[ -z "$usb_interface" ]]; then
         log_warning "No USB interface (usb0 or enx*) detected. Skipping networkd setup."
         return 0
     fi
-
+    
     log_info "Detected USB interface: $usb_interface"
-
+    
+    # Check if systemd-networkd already configured
+    if [[ "$force_networkd" == "true" ]]; then
+        log_info "Force flag set. Will reconfigure systemd-networkd."
+    elif systemctl is-enabled systemd-networkd >/dev/null 2>&1 && \
+       systemctl is-active systemd-networkd >/dev/null 2>&1 && \
+       [[ -f "/etc/systemd/network/10-usb.network" ]]; then
+        log_info "systemd-networkd already configured and running. Skipping..."
+        return 0
+    fi
+    
     # Create network config if it doesn't exist
     local network_file="/etc/systemd/network/10-usb.network"
     if [[ ! -f "$network_file" ]]; then
@@ -101,7 +97,7 @@ EOF
     else
         log_info "Network configuration already exists"
     fi
-
+    
     # Enable systemd-networkd if not already enabled
     if ! service_status systemd-networkd; then
         log_info "Enabling systemd-networkd..."
@@ -140,10 +136,22 @@ EOF
 # Phase 3: SSH Hardening
 harden_ssh() {
     log_info "Phase 3: Hardening SSH (Port: 2222)..."
-
+    
     local ssh_config="/etc/ssh/sshd_config"
     local ssh_config_backup="/etc/ssh/sshd_config.backup"
-
+    local force_ssh="${FORCE_SSH:-false}"
+    
+    # Check if SSH already hardened
+    if [[ "$force_ssh" == "true" ]]; then
+        log_info "Force flag set. Will re-apply SSH hardening."
+    elif grep -q "^Port 2222" "$ssh_config" 2>/dev/null && \
+       grep -q "^PasswordAuthentication no" "$ssh_config" 2>/dev/null && \
+       grep -q "^PubkeyAuthentication yes" "$ssh_config" 2>/dev/null && \
+       grep -q "^PermitEmptyPasswords no" "$ssh_config" 2>/dev/null; then
+        log_info "SSH already hardened on port 2222. Skipping..."
+        return 0
+    fi
+    
     # Backup config if not already backed up
     if [[ ! -f "$ssh_config_backup" ]]; then
         log_info "Backing up SSH config..."
@@ -152,7 +160,7 @@ harden_ssh() {
     else
         log_info "SSH config backup already exists"
     fi
-
+    
     # Update SSH settings
     log_info "Updating SSH configuration..."
 
@@ -288,11 +296,20 @@ setup_tailscale() {
 # Phase 5: Dotfiles Setup
 setup_dotfiles() {
     log_info "Phase 5: Setting up dotfiles..."
+    
+    local force_dotfiles="${FORCE_DOTFILES:-false}"
 
     local homelab_dir="$HOME/Homelab"
     local dotfiles_dir="$HOME/dotfiles"
 
     # Copy dotfiles if not exists
+    if [[ "$force_dotfiles" == "true" ]]; then
+        log_info "Force flag set. Will re-setup dotfiles..."
+    elif [[ -d "$dotfiles_dir" ]]; then
+        log_info "Dotfiles directory already exists. Skipping..."
+        return 0
+    fi
+    
     if [[ ! -d "$dotfiles_dir" ]]; then
         if [[ -d "$homelab_dir/dotfiles" ]]; then
             log_info "Copying dotfiles..."
@@ -302,10 +319,8 @@ setup_dotfiles() {
             log_warning "Homelab dotfiles directory not found at $homelab_dir/dotfiles"
             return 0
         fi
-    else
-        log_info "Dotfiles directory already exists"
     fi
-
+    
     # Setup with stow if available
     if command_exists stow; then
         cd "$dotfiles_dir"
@@ -320,6 +335,15 @@ setup_dotfiles() {
 # Phase 6: Vim Setup for Root
 setup_vim_root() {
     log_info "Phase 6: Setting up Vim for root user..."
+    
+    local force_vim="${FORCE_VIM:-false}"
+    
+    # Check if vim setup already completed
+    if [[ -f "/root/.vimrc" ]] && [[ -d "/root/.vim/undo" ]] && \
+       [[ "$force_vim" == "false" ]]; then
+        log_info "Vim setup for root already completed. Skipping..."
+        return 0
+    fi
     
     # Create user vim undo directory
     local user_vim_undo="$HOME/.vim/undo"
@@ -344,8 +368,14 @@ setup_vim_root() {
             sudo cp "$user_vimrc" "$root_vimrc"
             log_success "Vimrc copied to root"
         else
-            log_info "Root .vimrc already exists. Skipping copy."
-            log_info "Use --force flag to overwrite"
+            if [[ "$force_vim" == "true" ]]; then
+                log_info "Force flag set. Re-copying .vimrc..."
+                sudo cp "$user_vimrc" "$root_vimrc"
+                log_success "Vimrc copied to root"
+            else
+                log_info "Root .vimrc already exists. Skipping copy."
+                log_info "Use --force flag to overwrite"
+            fi
         fi
     fi
     
@@ -363,6 +393,17 @@ setup_vim_root() {
 # Phase 7: Docker Setup
 setup_docker() {
     log_info "Phase 7: Setting up Docker..."
+    
+    local force_docker="${FORCE_DOCKER:-false}"
+    
+    if [[ "$force_docker" == "true" ]]; then
+        log_info "Force flag set. Will re-install Docker..."
+    else
+        if command_exists docker && service_status docker; then
+            log_info "Docker already installed and running. Skipping..."
+            return 0
+        fi
+    fi
 
     if command_exists docker && service_status docker; then
         log_info "Docker already installed and running"
@@ -383,17 +424,32 @@ setup_docker() {
 # Phase 6: CLI Installation
 install_cli() {
     log_info "Phase 6: Installing Homelab CLI symlink..."
-
+    
     local force_cli_install="${FORCE_CLI_INSTALL:-false}"
     local symlink_path="/usr/local/bin/homelab"
-
-    # Detect the repository directory
-    # Handle both sourced and direct execution
+    
+    # Detect repository directory and script path
+    # Use parameter expansion to get absolute path of this script
+    local bootstrap_dir
+    local bootstrap_script
+    
     if [[ -n "${BASH_SOURCE[0]}" ]]; then
-        local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+        bootstrap_dir="$(cd "${BASH_SOURCE[0]%/*" && pwd)"
+        bootstrap_script="${BASH_SOURCE[0]}"
     else
-        # Fallback if script is sourced in an unusual way
-        local script_dir="$HOME/Homelab"
+        # Fallback to default location
+        bootstrap_dir="$HOME/Homelab"
+        bootstrap_script="$bootstrap_dir/cli/bootstrap/bootstrap.sh"
+    fi
+    
+    # CLI script is in same directory as bootstrap.sh
+    local target_script="${bootstrap_dir}/cli/homelab.sh"
+    
+    # Check if target script exists
+    if [[ ! -f "$target_script" ]]; then
+        log_error "CLI script not found at: $target_script"
+        log_info "Please ensure that Homelab repository is properly located at $bootstrap_dir"
+        return 1
     fi
 
     local target_script="${script_dir}/cli/homelab.sh"
@@ -633,6 +689,12 @@ main() {
             --force)
                 force_install=true
                 export FORCE_CLI_INSTALL="true"
+                export FORCE_NETWORKD="true"
+                export FORCE_SSH="true"
+                export FORCE_TAILSCALE="true"
+                export FORCE_DOTFILES="true"
+                export FORCE_VIM="true"
+                export FORCE_DOCKER="true"
                 shift
                 ;;
         esac
