@@ -46,5 +46,82 @@ ffind() {
     [[ -n "$file" ]] && echo "$file"
 }
 
+# Fuzzy file editor
+fedit() {
+    local files
+    local editor="${EDITOR:-vim}"
+
+    # Select one or more files
+    files=$(fzf -m --preview 'bat --style=numbers --color=always {} 2>/dev/null || cat {}' --preview-window=right:50%:wrap --prompt="Edit> ")
+
+    if [[ -n "$files" ]]; then
+        # Handle multiple files (one per line)
+        echo "$files" | while read -r file; do
+            if [[ -n "$file" ]]; then
+                $editor "$file"
+            fi
+        done
+    fi
+}
+
+# Fuzzy man page search
+fman() {
+    local man_page
+    man_page=$(man -k . | fzf --prompt='Man> ' | awk '{print $1}')
+
+    if [[ -n "$man_page" ]]; then
+        man "$man_page"
+    fi
+}
+
+# Fuzzy SSH host selection
+fssh() {
+    local host
+    host=$(grep "^Host " ~/.ssh/config 2>/dev/null | grep -v "*" | awk '{print $2}' | fzf --prompt="SSH> ")
+
+    if [[ -n "$host" ]]; then
+        ssh "$host"
+    fi
+}
+
+# Fuzzy environment variable search
+fenv() {
+    local var
+    var=$(env | fzf --height 40% --prompt="Env> " --preview 'echo {} | cut -d= -f2')
+
+    if [[ -n "$var" ]]; then
+        echo "$var" | cut -d= -f1 | tr -d '\n' | xclip -selection clipboard 2>/dev/null
+        echo "Copied to clipboard: $(echo "$var" | cut -d= -f1)"
+    fi
+}
+
+# Fuzzy grep with ripgrep
+fzf_grep() {
+    local pattern="${1:-}"
+    local file
+
+    if [[ -z "$pattern" ]]; then
+        echo "Usage: fzf_grep <pattern>"
+        return 1
+    fi
+
+    if command_exists rg; then
+        file=$(rg --line-number --color=never --no-heading --smart-case "$pattern" 2>/dev/null |
+               fzf --delimiter=: --nth=1..2 \
+                   --preview 'bat --style=numbers --color=always {1} 2>/dev/null | grep -C 3 --color=always {2}' \
+                   --preview-window=right:50%:wrap \
+                   --prompt="Grep> " \
+                   --bind="ctrl-o:execute($EDITOR +{2} {1})+abort")
+        if [[ -n "$file" ]]; then
+            local line=$(echo "$file" | cut -d: -f2)
+            file=$(echo "$file" | cut -d: -f1)
+            ${EDITOR:-vim} +"$line" "$file"
+        fi
+    else
+        echo "ripgrep (rg) is required for fzf_grep"
+        return 1
+    fi
+}
+
 # Print fzf version
 fzf_version() { fzf --version; }
