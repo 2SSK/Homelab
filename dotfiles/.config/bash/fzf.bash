@@ -105,7 +105,7 @@ fzf_grep() {
         return 1
     fi
 
-    if command_exists rg; then
+    if command -v rg >/dev/null 2>&1; then
         file=$(rg --line-number --color=never --no-heading --smart-case "$pattern" 2>/dev/null |
                fzf --delimiter=: --nth=1..2 \
                    --preview 'bat --style=numbers --color=always {1} 2>/dev/null | grep -C 3 --color=always {2}' \
