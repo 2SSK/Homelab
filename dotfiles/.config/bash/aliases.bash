@@ -8,11 +8,11 @@ alias ~='cd ~'
 alias -- -='cd -'
 
 # LS VARIANTS
-alias l='ls -lF'
-alias ll='ls -laF'
-alias la='ls -A'
-alias lt='tree -L 2'
-alias lh='ls -lath'
+alias l='ls -lF --color=auto'
+alias ll='ls -laF --color=auto'
+alias la='ls -A --color=auto'
+alias lt='tree -L 2 -C'
+alias lh='ls -lath --color=auto'
 
 # FILE OPERATIONS
 alias cp='cp -iv'
@@ -60,7 +60,7 @@ alias gl='git log --oneline --graph --decorate'
 alias gclone='git clone'
 
 # EDITORS AND CONFIG
-alias v='vim'
+alias vi='vim'
 alias vv='vim .'
 alias e='micro'
 alias n='nano'
@@ -99,4 +99,15 @@ alias unbz2='tar -xjvf'
 # Misc
 alias ff='neofetch'
 
+# FZF ALIASES
+# Use fzf for common commands
+alias cdf='fcd'              # Fuzzy cd
+alias ch='fhist'             # Command history
+alias fk='fkill'             # Kill process
+alias fe='fedit'             # Edit file
+alias fm='fman'              # Man page
+alias fssh='fssh'            # SSH
+alias ffenv='fenv'           # Environment variables
+alias fg='fzf_grep'          # Fuzzy grep
+alias fzff='ffind'           # Fuzzy file find
 

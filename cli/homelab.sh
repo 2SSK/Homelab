@@ -20,19 +20,25 @@ USAGE:
      install     Install software and scripts
      maintain    Perform maintenance tasks
      remove      Remove installed software (not implemented)
+     self-update Update CLI symlink to point to current repository
      help        Show this help message
-
-INSTALL SUBCOMMANDS:
-    docker      Install Docker and Docker Compose
-
-MAINTAIN SUBCOMMANDS:
-    tethering   Update USB tethering network configuration
-
-EXAMPLES:
-    homelab bootstrap
-    homelab install docker
-    homelab maintain tethering
-    homelab help
+ 
+ INSTALL SUBCOMMANDS:
+     docker      Install Docker and Docker Compose
+ 
+ MAINTAIN SUBCOMMANDS:
+     tethering   Update USB tethering network configuration
+ 
+ SELF-UPDATE OPTIONS:
+     --force     Force update even if symlink already points correctly
+ 
+ EXAMPLES:
+     homelab bootstrap
+     homelab install docker
+     homelab maintain tethering
+     homelab self-update
+     homelab self-update --force
+     homelab help
 
 EOF
 }
@@ -87,6 +93,74 @@ case $command in
         ;;
     remove)
         echo "Remove functionality not implemented yet."
+        ;;
+    self-update)
+        # Handle self-update command
+        local force=false
+
+        # Parse flags for self-update
+        shift 2  # Remove 'self-update' from arguments
+        for arg in "$@"; do
+            case $arg in
+                --force)
+                    force=true
+                    ;;
+            esac
+        done
+
+        # Get the path to this script
+        local script_path
+        if [[ -L "${BASH_SOURCE[0]}" ]]; then
+            # If this is a symlink, get the real path
+            script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+        else
+            script_path="$(realpath "${BASH_SOURCE[0]}")"
+        fi
+
+        local symlink_path="/usr/local/bin/homelab"
+
+        echo "Updating CLI symlink..."
+        echo "Script location: $script_path"
+        echo "Symlink target: $symlink_path"
+
+        # Check if sudo is available
+        if ! sudo -n true 2>/dev/null; then
+            echo "Error: sudo access required"
+            echo "Please run: sudo visudo and add appropriate privileges"
+            exit 1
+        fi
+
+        # Check current state
+        if [[ -L "$symlink_path" ]]; then
+            local current_target
+            current_target="$(readlink -f "$symlink_path")"
+
+            if [[ "$current_target" == "$script_path" ]]; then
+                if [[ "$force" == "true" ]]; then
+                    echo "Symlink already points correctly, but --force specified. Re-creating..."
+                else
+                    echo "Symlink already points to correct location: $current_target"
+                    echo "Nothing to do."
+                    exit 0
+                fi
+            else
+                echo "Current symlink points to: $current_target"
+                echo "Updating to point to: $script_path"
+            fi
+        fi
+
+        # Remove existing symlink or file
+        sudo rm -f "$symlink_path"
+
+        # Create new symlink
+        if sudo ln -s "$script_path" "$symlink_path"; then
+            echo "Success: CLI symlink updated to point to $script_path"
+            echo "You can now run: homelab help"
+            exit 0
+        else
+            echo "Error: Failed to create symlink"
+            exit 1
+        fi
         ;;
     help|--help|-h)
         show_help

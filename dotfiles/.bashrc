@@ -12,6 +12,7 @@ source_if_exists(){
 # Source modules in order
 source_if_exists "$BASH_CONFIG_DIR/aliases.bash"
 source_if_exists "$BASH_CONFIG_DIR/keybinds.bash"
+source_if_exists "$BASH_CONFIG_DIR/fzf.bash"
 source_if_exists "$BASH_CONFIG_DIR/prompt.bash"
 source_if_exists "$BASH_CONFIG_DIR/functions/system.bash"
 source_if_exists "$BASH_CONFIG_DIR/functions/utils.bash"

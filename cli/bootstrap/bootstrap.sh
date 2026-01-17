@@ -31,8 +31,8 @@ install_base_packages() {
         return 1
     fi
 
-    # Install base packages
-    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential)
+    # Install base packages (includes fzf and related tools for fuzzy finding)
+    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential fzf fd-find ripgrep bat tree xclip stow)
 
     for package in "${packages[@]}"; do
         if ! dpkg -l | grep -q "^ii  $package "; then
@@ -45,6 +45,22 @@ install_base_packages() {
             log_info "$package already installed"
         fi
     done
+
+    # Ensure fzf is properly installed via git clone method for better integration
+    # This provides better shell bindings and completion than package installation
+    if [[ -d "$HOME/.fzf" ]]; then
+        log_info "fzf already installed via git clone"
+    else
+        log_info "Installing fzf via git clone..."
+        if git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf; then
+            # Run fzf install with --no-update-rc to avoid modifying .bashrc directly
+            # We handle fzf sourcing in our dotfiles instead
+            ~/.fzf/install --all --no-update-rc
+            log_success "fzf installed via git clone"
+        else
+            log_warning "Failed to clone fzf from git, package installation may be sufficient"
+        fi
+    fi
 
     log_success "Base packages installed successfully"
 }
@@ -301,9 +317,52 @@ setup_dotfiles() {
     fi
 }
 
-# Phase 6: Docker Setup
+# Phase 6: Vim Setup for Root
+setup_vim_root() {
+    log_info "Phase 6: Setting up Vim for root user..."
+    
+    # Create user vim undo directory
+    local user_vim_undo="$HOME/.vim/undo"
+    if [[ ! -d "$user_vim_undo" ]]; then
+        log_info "Creating user vim undo directory: $user_vim_undo"
+        mkdir -p "$user_vim_undo"
+        log_success "User vim undo directory created"
+    else
+        log_info "User vim undo directory already exists: $user_vim_undo"
+    fi
+    
+    # Copy .vimrc to root home directory
+    local user_vimrc="$HOME/.vimrc"
+    local root_vimrc="/root/.vimrc"
+    
+    if [[ ! -f "$user_vimrc" ]]; then
+        log_warning "User .vimrc not found at $user_vimrc"
+        log_info "Skipping vimrc copy to root"
+    else
+        if [[ ! -f "$root_vimrc" ]]; then
+            log_info "Copying .vimrc to /root/.vimrc..."
+            sudo cp "$user_vimrc" "$root_vimrc"
+            log_success "Vimrc copied to root"
+        else
+            log_info "Root .vimrc already exists. Skipping copy."
+            log_info "Use --force flag to overwrite"
+        fi
+    fi
+    
+    # Create root vim undo directory
+    local root_vim_undo="/root/.vim/undo"
+    if [[ ! -d "$root_vim_undo" ]]; then
+        log_info "Creating root vim undo directory: $root_vim_undo"
+        sudo mkdir -p "$root_vim_undo"
+        log_success "Root vim undo directory created"
+    else
+        log_info "Root vim undo directory already exists: $root_vim_undo"
+    fi
+}
+
+# Phase 7: Docker Setup
 setup_docker() {
-    log_info "Phase 6: Setting up Docker..."
+    log_info "Phase 7: Setting up Docker..."
 
     if command_exists docker && service_status docker; then
         log_info "Docker already installed and running"
@@ -321,9 +380,146 @@ setup_docker() {
     fi
 }
 
-# Phase 7: Verification
+# Phase 6: CLI Installation
+install_cli() {
+    log_info "Phase 6: Installing Homelab CLI symlink..."
+
+    local force_cli_install="${FORCE_CLI_INSTALL:-false}"
+    local symlink_path="/usr/local/bin/homelab"
+
+    # Detect the repository directory
+    # Handle both sourced and direct execution
+    if [[ -n "${BASH_SOURCE[0]}" ]]; then
+        local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    else
+        # Fallback if script is sourced in an unusual way
+        local script_dir="$HOME/Homelab"
+    fi
+
+    local target_script="${script_dir}/cli/homelab.sh"
+
+    # Check if the target script exists
+    if [[ ! -f "$target_script" ]]; then
+        log_error "CLI script not found at: $target_script"
+        log_info "Please ensure the Homelab repository is properly located at $script_dir"
+        return 1
+    fi
+
+    log_info "Repository directory: $script_dir"
+    log_info "Target CLI script: $target_script"
+
+    # Check if user has sudo access
+    if ! sudo -n true 2>/dev/null; then
+        log_error "Sudo access required to create CLI symlink"
+        log_info "Please run: sudo visudo and add appropriate privileges, or run this script with sudo"
+        return 1
+    fi
+
+    # Check current state of the symlink
+    if [[ -L "$symlink_path" ]]; then
+        # Symlink exists - check if it's valid and points to the right location
+        local current_target
+        current_target="$(readlink -f "$symlink_path")"
+
+        if [[ -z "$current_target" ]]; then
+            # Broken symlink
+            log_warning "Found broken symlink at $symlink_path"
+            log_info "Removing broken symlink..."
+            sudo rm -f "$symlink_path"
+            create_symlink "$target_script" "$symlink_path" "$force_cli_install"
+        else
+            # Symlink is valid - check if it points to the right location
+            # Convert to absolute paths for comparison
+            local absolute_target
+            absolute_target="$(cd "$(dirname "$target_script")" && pwd)/$(basename "$target_script")"
+            local absolute_current
+            absolute_current="$(cd "$(dirname "$current_target")" && pwd)/$(basename "$current_target")"
+
+            if [[ "$absolute_current" == "$absolute_target" ]]; then
+                # Symlink points to the correct location
+                log_success "CLI symlink already correctly installed at $symlink_path"
+
+                if [[ "$force_cli_install" == "true" ]]; then
+                    log_info "--force flag detected, updating symlink..."
+                    sudo rm -f "$symlink_path"
+                    create_symlink "$target_script" "$symlink_path" "$force_cli_install"
+                fi
+            else
+                # Symlink points to wrong location
+                log_warning "Symlink exists but points to different location"
+                log_info "  Current: $current_target"
+                log_info "  Expected: $target_script"
+
+                if [[ "$force_cli_install" == "true" ]]; then
+                    log_info "--force flag detected, updating symlink..."
+                    sudo rm -f "$symlink_path"
+                    create_symlink "$target_script" "$symlink_path" "$force_cli_install"
+                else
+                    log_info "Use --force flag to update the symlink"
+                    return 1
+                fi
+            fi
+        fi
+    elif [[ -e "$symlink_path" ]]; then
+        # A regular file or directory exists at the symlink location
+        log_error "A file or directory already exists at $symlink_path"
+        log_info "Please remove it manually or use --force flag to overwrite"
+
+        if [[ "$force_cli_install" == "true" ]]; then
+            log_warning "--force flag detected, removing existing file/directory..."
+            sudo rm -rf "$symlink_path"
+            create_symlink "$target_script" "$symlink_path" "$force_cli_install"
+        else
+            return 1
+        fi
+    else
+        # No symlink exists - create it
+        create_symlink "$target_script" "$symlink_path" "$force_cli_install"
+    fi
+
+    # Verify the symlink was created correctly
+    if [[ -L "$symlink_path" ]]; then
+        if [[ -x "$symlink_path" ]]; then
+            log_success "CLI symlink installed and executable: $symlink_path"
+            log_info "You can now run: homelab help"
+            return 0
+        else
+            log_warning "CLI symlink created but may not be executable"
+            log_info "Run: sudo chmod +x $target_script"
+            return 1
+        fi
+    else
+        log_error "Failed to create CLI symlink"
+        return 1
+    fi
+}
+
+# Helper function to create the symlink
+create_symlink() {
+    local target="$1"
+    local symlink="$2"
+    local force="$3"
+
+    log_info "Creating symlink at $symlink..."
+
+    if ! sudo ln -sf "$target" "$symlink"; then
+        log_error "Failed to create symlink"
+        return 1
+    fi
+
+    # Make sure the target script is executable
+    if [[ ! -x "$target" ]]; then
+        log_info "Making target script executable..."
+        sudo chmod +x "$target"
+    fi
+
+    log_success "CLI symlink created successfully"
+    return 0
+}
+
+# Phase 8: Verification
 verify_setup() {
-    log_info "Phase 7: Verifying setup..."
+    log_info "Phase 8: Verifying setup..."
 
     local all_good=true
 
@@ -369,6 +565,41 @@ verify_setup() {
         log_warning "systemd-networkd not running (may not be needed)"
     fi
 
+    # Check CLI symlink
+    if [[ -L "/usr/local/bin/homelab" ]]; then
+        local cli_target
+        cli_target="$(readlink -f "/usr/local/bin/homelab")"
+        if [[ -n "$cli_target" && -f "$cli_target" ]]; then
+            log_success "CLI symlink is valid and points to: $cli_target"
+        else
+            log_warning "CLI symlink exists but is broken"
+            all_good=false
+        fi
+    else
+        log_warning "CLI symlink not found at /usr/local/bin/homelab"
+    fi
+
+    # Check Vim setup for root
+    if [[ -d "/root/.vim/undo" ]]; then
+        log_success "Root vim undo directory exists: /root/.vim/undo"
+    else
+        log_warning "Root vim undo directory not found"
+        all_good=false
+    fi
+    
+    if [[ -f "/root/.vimrc" ]]; then
+        log_success "Root .vimrc exists: /root/.vimrc"
+    else
+        log_warning "Root .vimrc not found"
+        all_good=false
+    fi
+    
+    if [[ -d "$HOME/.vim/undo" ]]; then
+        log_success "User vim undo directory exists: $HOME/.vim/undo"
+    else
+        log_info "User vim undo directory not found (optional)"
+    fi
+
     # Test connectivity
     log_info "Testing connectivity..."
     if getent hosts google.com >/dev/null 2>&1; then
@@ -395,8 +626,24 @@ verify_setup() {
 
 # Main function
 main() {
+    # Parse command-line arguments
+    local force_install=false
+    for arg in "$@"; do
+        case $arg in
+            --force)
+                force_install=true
+                export FORCE_CLI_INSTALL="true"
+                shift
+                ;;
+        esac
+    done
+
     log_info "Starting Homelab Bootstrap..."
     log_info "Log file: $LOG_FILE"
+
+    if [[ "$force_install" == "true" ]]; then
+        log_info "Running with --force flag - will overwrite existing configurations"
+    fi
 
     check_root
 
@@ -405,12 +652,15 @@ main() {
     harden_ssh
     setup_tailscale
     setup_dotfiles
+    setup_vim_root
+    install_cli
     setup_docker
     verify_setup
 
     log_success "Homelab bootstrap completed!"
     log_info "Please reboot the system to ensure all changes take effect."
     log_info "After reboot, verify SSH access on port 2222 and Tailscale connectivity."
+    log_info "Run 'homelab help' to see available CLI commands."
 }
 
 # Run main function
