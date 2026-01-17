@@ -13,7 +13,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 trap 'echo "Error occurred at line $LINENO. Check $LOG_FILE for details." >&2' ERR
 
 # Source utility functions
-source "$(dirname "${BASH_SOURCE[0]}")/../libs/utils.sh"
+source "/home/ssk/Code/Projects/building/Homelab/cli/libs/utils.sh"
 
 # Phase 1: System Update & Base Packages
 install_base_packages() {
@@ -66,7 +66,7 @@ setup_networkd() {
     done
     
     if [[ -z "$usb_interface" ]]; then
-        log_warning "No USB interface (usb0 or enx*) detected. Skipping networkd setup."
+        log_warning "No USB interface \(usb0 or enx*\) detected. Skipping networkd setup."
         return 0
     fi
     
@@ -82,7 +82,7 @@ setup_networkd() {
         return 0
     fi
     
-    # Create network config if it doesn't exist
+    # Create network config if it does not exist
     local network_file="/etc/systemd/network/10-usb.network"
     if [[ ! -f "$network_file" ]]; then
         log_info "Creating $network_file..."
@@ -135,7 +135,7 @@ EOF
 
 # Phase 3: SSH Hardening
 harden_ssh() {
-    log_info "Phase 3: Hardening SSH (Port: 2222)..."
+    log_info "Phase 3: Hardening SSH \(Port: 2222\)..."
     
     local ssh_config="/etc/ssh/sshd_config"
     local ssh_config_backup="/etc/ssh/sshd_config.backup"
@@ -255,7 +255,7 @@ setup_tailscale() {
         use_auth_key=true
         log_info "Using auth key from environment variable"
     else
-        read -r -p "Enter Tailscale auth key (leave empty for browser authentication): " auth_key
+        read -r -p "Enter Tailscale auth key \(leave empty for browser authentication\): " auth_key
         if [[ -n "$auth_key" ]]; then
             use_auth_key=true
             log_info "Using provided auth key"
@@ -274,7 +274,7 @@ setup_tailscale() {
     # Check for advertise exit node
     local advertise_exit="${TAILSCALE_ADVERTISE_EXIT_NODE:-}"
     if [[ -z "$advertise_exit" ]]; then
-        read -r -p "Advertise as exit node? (y/N): " advertise_exit
+        read -r -p "Advertise as exit node? \(y/N\): " advertise_exit
     fi
 
     if [[ "$advertise_exit" =~ ^[Yy]$ ]] || [[ "$advertise_exit" == "yes" ]] || [[ "$advertise_exit" == "true" ]] || [[ "$advertise_exit" == "1" ]]; then
@@ -473,7 +473,7 @@ install_cli() {
 
     # Check current state of the symlink
     if [[ -L "$symlink_path" ]]; then
-        # Symlink exists - check if it's valid and points to the right location
+        # Symlink exists - check if it is valid and points to the right location
         local current_target
         current_target="$(readlink -f "$symlink_path")"
 
@@ -599,7 +599,7 @@ verify_setup() {
         if tailscale status >/dev/null 2>&1; then
             log_success "Tailscale is connected"
         else
-            log_warning "Tailscale not connected (may need manual auth)"
+            log_warning "Tailscale not connected \(may need manual auth\)"
         fi
     else
         log_error "Tailscale service not running"
@@ -618,7 +618,7 @@ verify_setup() {
     if service_status systemd-networkd; then
         log_success "systemd-networkd is running"
     else
-        log_warning "systemd-networkd not running (may not be needed)"
+        log_warning "systemd-networkd not running \(may not be needed\)"
     fi
 
     # Check CLI symlink
@@ -653,7 +653,7 @@ verify_setup() {
     if [[ -d "$HOME/.vim/undo" ]]; then
         log_success "User vim undo directory exists: $HOME/.vim/undo"
     else
-        log_info "User vim undo directory not found (optional)"
+        log_info "User vim undo directory not found \(optional\)"
     fi
 
     # Test connectivity
@@ -722,7 +722,7 @@ main() {
     log_success "Homelab bootstrap completed!"
     log_info "Please reboot the system to ensure all changes take effect."
     log_info "After reboot, verify SSH access on port 2222 and Tailscale connectivity."
-    log_info "Run 'homelab help' to see available CLI commands."
+    log_info "Run homelab help to see available CLI commands."
 }
 
 # Run main function

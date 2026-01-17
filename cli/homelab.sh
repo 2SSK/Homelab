@@ -96,7 +96,7 @@ case $command in
         ;;
     self-update)
         # Handle self-update command
-        local force=false
+        force=false
 
         # Parse flags for self-update
         shift 2  # Remove 'self-update' from arguments
@@ -109,7 +109,7 @@ case $command in
         done
 
         # Get the path to this script
-        local script_path
+        script_path=""
         if [[ -L "${BASH_SOURCE[0]}" ]]; then
             # If this is a symlink, get the real path
             script_path="$(readlink -f "${BASH_SOURCE[0]}")"
@@ -117,7 +117,7 @@ case $command in
             script_path="$(realpath "${BASH_SOURCE[0]}")"
         fi
 
-        local symlink_path="/usr/local/bin/homelab"
+        symlink_path="/usr/local/bin/homelab"
 
         echo "Updating CLI symlink..."
         echo "Script location: $script_path"
@@ -132,7 +132,6 @@ case $command in
 
         # Check current state
         if [[ -L "$symlink_path" ]]; then
-            local current_target
             current_target="$(readlink -f "$symlink_path")"
 
             if [[ "$current_target" == "$script_path" ]]; then
