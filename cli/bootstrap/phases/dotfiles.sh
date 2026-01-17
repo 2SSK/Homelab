@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Phase 5: Dotfiles Setup
 setup_dotfiles() {
     log_info "Phase 5: Setting up dotfiles..."

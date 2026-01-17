@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Phase 6: Vim Setup for Root
 setup_vim_root() {
     log_info "Phase 6: Setting up Vim for root user..."

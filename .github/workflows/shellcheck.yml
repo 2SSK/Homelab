@@ -1,0 +1,64 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.sh'
+      - '.github/workflows/shellcheck.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - '**.sh'
+      - '.github/workflows/shellcheck.yml'
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Find shell scripts
+        id: find-scripts
+        run: |
+          echo "Finding all shell scripts..."
+          scripts=$(find . -type f -name "*.sh" | tr '\n' ' ')
+          echo "scripts=$scripts" >> $GITHUB_OUTPUT
+          echo "Found scripts: $scripts"
+
+      - name: Run ShellCheck
+        run: |
+          echo "Running ShellCheck on all scripts..."
+          find . -type f -name "*.sh" -print0 | xargs -0 shellcheck \
+            --severity=warning \
+            --shell=bash \
+            --format=gcc \
+            --external-sources
+
+      - name: ShellCheck with annotations
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          scandir: './cli'
+          format: gcc
+          
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-latest
+    needs: shellcheck
+    if: always()
+    
+    steps:
+      - name: Check ShellCheck results
+        run: |
+          if [ "${{ needs.shellcheck.result }}" == "failure" ]; then
+            echo "::error::ShellCheck found issues in shell scripts"
+            exit 1
+          fi
+          echo "✅ All shell scripts passed ShellCheck validation"

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Phase 2: systemd-networkd Setup
 setup_networkd() {
     log_info "Phase 2: Setting up systemd-networkd..."
@@ -37,7 +39,7 @@ setup_networkd() {
     local network_file="/etc/systemd/network/10-usb.network"
     if [[ ! -f "$network_file" ]]; then
         log_info "Creating $network_file..."
-        sudo tee "$network_file" > /dev/null << 'NET_EOF'
+        sudo tee "$network_file" > /dev/null << NET_EOF
 [Match]
 Name=$usb_interface
 

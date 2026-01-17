@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Phase 1: System Update & Base Packages
 install_base_packages() {
     log_info "Phase 1: Installing base packages..."

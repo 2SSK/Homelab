@@ -1,23 +1,20 @@
 #!/usr/bin/env bash
 
-# Phase 7: Docker Setup
+set -euo pipefail
+
+# Phase 8: Docker Setup
 setup_docker() {
     log_info "Phase 7: Setting up Docker..."
     
     local force_docker="${FORCE_DOCKER:-false}"
     
-    if [[ "$force_docker" == "true" ]]; then
-        log_info "Force flag set. Will re-install Docker..."
-    else
-        if command_exists docker && service_status docker; then
+    if command_exists docker && service_status docker; then
+        if [[ "$force_docker" == "true" ]]; then
+            log_info "Force flag set. Will re-install Docker..."
+        else
             log_info "Docker already installed and running. Skipping..."
             return 0
         fi
-    fi
-
-    if command_exists docker && service_status docker; then
-        log_info "Docker already installed and running"
-        return 0
     fi
 
     local install_script="$HOME/Homelab/cli/install/docker.sh"

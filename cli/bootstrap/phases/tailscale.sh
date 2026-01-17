@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Phase 4: Tailscale Setup
 setup_tailscale() {
     log_info "Phase 4: Setting up Tailscale..."
@@ -13,8 +15,14 @@ setup_tailscale() {
     # Add Tailscale repository
     if [[ ! -f /etc/apt/sources.list.d/tailscale.list ]]; then
         log_info "Adding Tailscale repository..."
-        curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-        curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null
+        
+        # Detect Ubuntu release codename
+        local ubuntu_release
+        ubuntu_release=$(lsb_release -cs 2>/dev/null || echo "jammy")
+        log_info "Detected Ubuntu release: $ubuntu_release"
+        
+        curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${ubuntu_release}.noarmor.gpg" | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+        curl -fsSL "https://pkgs.tailscale.com/stable/ubuntu/${ubuntu_release}.tailscale-keyring.list" | sudo tee /etc/apt/sources.list.d/tailscale.list >/dev/null
         sudo apt update
         log_success "Tailscale repository added"
     else
@@ -46,7 +54,7 @@ setup_tailscale() {
         use_auth_key=true
         log_info "Using auth key from environment variable"
     else
-        read -r -p "Enter Tailscale auth key \(leave empty for browser authentication\): " auth_key
+        read -r -p "Enter Tailscale auth key (leave empty for browser authentication): " auth_key
         if [[ -n "$auth_key" ]]; then
             use_auth_key=true
             log_info "Using provided auth key"
@@ -55,27 +63,27 @@ setup_tailscale() {
         fi
     fi
 
-    # Build tailscale up command
-    local cmd="sudo tailscale up --accept-routes"
+    # Build tailscale up command arguments (using array for safety)
+    local -a cmd_args=("--accept-routes")
 
     if [[ "$use_auth_key" == true ]]; then
-        cmd="$cmd --auth-key=\"$auth_key\""
+        cmd_args+=("--auth-key=$auth_key")
     fi
 
     # Check for advertise exit node
     local advertise_exit="${TAILSCALE_ADVERTISE_EXIT_NODE:-}"
     if [[ -z "$advertise_exit" ]]; then
-        read -r -p "Advertise as exit node? \(y/N\): " advertise_exit
+        read -r -p "Advertise as exit node? (y/N): " advertise_exit
     fi
 
     if [[ "$advertise_exit" =~ ^[Yy]$ ]] || [[ "$advertise_exit" == "yes" ]] || [[ "$advertise_exit" == "true" ]] || [[ "$advertise_exit" == "1" ]]; then
-        cmd="$cmd --advertise-exit-node"
+        cmd_args+=("--advertise-exit-node")
         log_info "Advertising as exit node"
     fi
 
-    # Execute tailscale up
+    # Execute tailscale up (using array expansion for safe execution)
     log_info "Starting Tailscale..."
-    eval "$cmd"
+    sudo tailscale up "${cmd_args[@]}"
 
     if [[ "$use_auth_key" == true ]]; then
         log_success "Tailscale started and authenticated using auth key"

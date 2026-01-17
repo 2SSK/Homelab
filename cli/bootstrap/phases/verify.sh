@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
-# Phase 8: Verification
+set -euo pipefail
+
+# Phase 9: Verification
 verify_setup() {
-    log_info "Phase 8: Verifying setup..."
+    log_info "Phase 9: Verifying setup..."
 
     local all_good=true
 
@@ -26,7 +28,7 @@ verify_setup() {
         if tailscale status >/dev/null 2>&1; then
             log_success "Tailscale is connected"
         else
-            log_warning "Tailscale not connected \(may need manual auth\)"
+            log_warning "Tailscale not connected (may need manual auth)"
         fi
     else
         log_error "Tailscale service not running"
@@ -45,7 +47,7 @@ verify_setup() {
     if service_status systemd-networkd; then
         log_success "systemd-networkd is running"
     else
-        log_warning "systemd-networkd not running \(may not be needed\)"
+        log_warning "systemd-networkd not running (may not be needed)"
     fi
 
     # Check CLI symlink
@@ -80,7 +82,7 @@ verify_setup() {
     if [[ -d "$HOME/.vim/undo" ]]; then
         log_success "User vim undo directory exists: $HOME/.vim/undo"
     else
-        log_info "User vim undo directory not found \(optional\)"
+        log_info "User vim undo directory not found (optional)"
     fi
 
     # Test connectivity

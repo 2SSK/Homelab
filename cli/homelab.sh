@@ -3,9 +3,19 @@
 # Homelab CLI - A command-line tool for managing homelab installations and maintenance
 # Usage: homelab <command> <subcommand>
 
-set -e
+set -euo pipefail
 
-CLI_DIR="$HOME/Homelab/cli"
+# Determine CLI directory based on script location
+if [[ -L "${BASH_SOURCE[0]}" ]]; then
+    CLI_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" 
+else
+    CLI_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+# Source utility functions for consistent logging
+if [[ -f "$CLI_DIR/libs/utils.sh" ]]; then
+    source "$CLI_DIR/libs/utils.sh"
+fi
 
 # Function to display help
 show_help() {
@@ -99,7 +109,7 @@ case $command in
         force=false
 
         # Parse flags for self-update
-        shift 2  # Remove 'self-update' from arguments
+        shift  # Remove 'self-update' from arguments
         for arg in "$@"; do
             case $arg in
                 --force)

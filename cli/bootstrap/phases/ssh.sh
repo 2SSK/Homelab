@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Phase 3: SSH Hardening
 harden_ssh() {
-    log_info "Phase 3: Hardening SSH \(Port: 2222\)"
+    log_info "Phase 3: Hardening SSH (Port: 2222)"
     
     local ssh_config="/etc/ssh/sshd_config"
     local ssh_config_backup="/etc/ssh/sshd_config.backup"

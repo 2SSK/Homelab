@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-# Phase 6: CLI Installation
+set -euo pipefail
+
+# Phase 7: CLI Installation
 install_cli() {
     log_info "Phase 6: Installing Homelab CLI symlink..."
     
@@ -10,19 +12,17 @@ install_cli() {
     # Detect repository directory and script path
     # Use parameter expansion to get absolute path of this script
     local bootstrap_dir
-    local bootstrap_script
     
     if [[ -n "${BASH_SOURCE[0]}" ]]; then
-        bootstrap_dir="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
-        bootstrap_script="${BASH_SOURCE[0]}"
+        # Go up from phases/ -> bootstrap/ -> cli/
+        bootstrap_dir="$(cd "${BASH_SOURCE[0]%/*}/../.." && pwd)"
     else
         # Fallback to default location
-        bootstrap_dir="$HOME/Homelab"
-        bootstrap_script="$bootstrap_dir/cli/bootstrap/bootstrap.sh"
+        bootstrap_dir="$HOME/Homelab/cli"
     fi
     
-    # CLI script is in same directory as bootstrap.sh
-    local target_script="${bootstrap_dir}/cli/homelab.sh"
+    # CLI script is in the cli directory
+    local target_script="${bootstrap_dir}/homelab.sh"
     
     # Check if target script exists
     if [[ ! -f "$target_script" ]]; then
@@ -124,7 +124,8 @@ install_cli() {
 create_symlink() {
     local target="$1"
     local symlink="$2"
-    local force="$3"
+    # shellcheck disable=SC2034  # force reserved for future use
+    local force="${3:-false}"
 
     log_info "Creating symlink at $symlink..."
 
