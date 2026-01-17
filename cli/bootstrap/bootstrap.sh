@@ -13,7 +13,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 trap 'echo "Error occurred at line $LINENO. Check $LOG_FILE for details." >&2' ERR
 
 # Source utility functions
-source "/home/ssk/Code/Projects/building/Homelab/cli/libs/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../libs/utils.sh"
 
 # Load phase modules
 source "$(dirname "${BASH_SOURCE[0]}")/phases/packages.sh"
