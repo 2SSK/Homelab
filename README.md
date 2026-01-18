@@ -1,56 +1,88 @@
 # Homelab
 
-A learning-focused homelab repository for Ubuntu server management, featuring custom dotfiles and a CLI tool for installations and maintenance.
+Production-ready Ubuntu server configuration with automated bootstrapping, dotfiles management, and a CLI for ongoing maintenance.
 
 ## Features
 
-- **CLI Tool**: `homelab` command for managing Docker installs and USB tethering updates
-- **Dotfiles**: Modular bash configuration with functions, aliases, and keybindings
-- **Networking**: systemd-networkd setup for USB tethering
-- **Documentation**: Guides for network configuration
+| Feature        | Description                                         |
+| -------------- | --------------------------------------------------- |
+| **Bootstrap**  | One-command server setup with 9 automated phases    |
+| **Dotfiles**   | XDG-compliant bash/vim configs via GNU Stow         |
+| **CLI Tool**   | `homelab` command for installations and maintenance |
+| **Networking** | systemd-networkd with USB tethering support         |
+| **Security**   | SSH hardening + Tailscale VPN integration           |
+| **Containers** | Docker and Docker Compose setup                     |
 
 ## Quick Start
 
-1. **Clone the repo**:
+### Prerequisites
 
-   ```bash
-   git clone https://github.com/yourusername/homelab.git
-   cd homelab
-   ```
+- Ubuntu Server 22.04+
+- Git and curl installed
+- Internet connection
 
-2. **Install the CLI**:
+### Installation
 
-   ```bash
-   make install
-   ```
+```bash
+# Clone to /opt/Homelab (required location)
+sudo mkdir -p /opt && sudo chown $USER:$USER /opt
+git clone https://github.com/yourusername/Homelab.git /opt/Homelab
+cd /opt/Homelab
 
-3. **Use the CLI**:
+# Full bootstrap (runs all phases)
+./cli/homelab.sh bootstrap
 
-   ```bash
-   homelab help
-   homelab install docker
-   homelab maintain tethering
-   ```
+# Start new shell
+exec bash
+```
 
-4. **Deploy dotfiles**:
-   ```bash
-   cp -r dotfiles ~/
-   cd ~/dotfiles
-   stow .
-   ```
+### Basic Usage
 
-## Learning Focus
+```bash
+homelab help                    # Show available commands
+homelab dotfiles restow         # Update dotfiles after changes
+homelab install docker          # Install Docker
+homelab maintain tethering      # Update USB tethering config
+```
 
-This repo demonstrates:
+## Documentation
 
-- Bash scripting and CLI design
-- Systemd network configuration
-- Dotfile management
-- Git-based infrastructure
-- Ubuntu server administration
+| Guide                                        | Description                               |
+| -------------------------------------------- | ----------------------------------------- |
+| [Installation](docs/installation.md)         | Full bootstrap process and file locations |
+| [Dotfiles](docs/dotfiles.md)                 | Bash/vim configuration and customization  |
+| [CLI Reference](docs/cli.md)                 | All commands and Makefile targets         |
+| [systemd-networkd](docs/systemd-networkd.md) | USB tethering network setup               |
+
+## Project Structure
+
+```
+/opt/Homelab/
+├── cli/
+│   ├── homelab.sh              # Main CLI entrypoint
+│   ├── bootstrap/              # Bootstrap phases
+│   ├── install/                # Installation scripts
+│   ├── maintain/               # Maintenance scripts
+│   └── libs/                   # Shared utilities
+├── dotfiles/
+│   ├── bash/                   # Bash configuration (stow package)
+│   └── vim/                    # Vim configuration (stow package)
+├── docs/                       # Documentation
+└── Makefile                    # Make targets
+```
+
+## Dotfiles Highlights
+
+- **Vi-mode** with `jk` escape mapping
+- **Git-aware prompt** with branch and status indicators
+- **FZF integration** for fuzzy file/directory navigation
+- **Battery status** in prompt (for laptop servers)
+- **XDG compliance** (`~/.config/bash/`)
+
+## GitHub Actions
+
+Automated deployment via Tailscale SSH on push to main branch.
 
 ## License
 
-MIT License</content>
-<parameter name="filePath">/home/ssk/Code/Projects/building/Homelab/README.md
-
+[MIT License](LICENSE) © 2025 Saurav Singh Karmwar</content>
