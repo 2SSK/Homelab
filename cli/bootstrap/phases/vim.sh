@@ -8,6 +8,15 @@ setup_vim_root() {
     
     local force_vim="${FORCE_VIM:-false}"
     
+    # Determine vimrc source - prefer dotfiles repo directly
+    local vimrc_source=""
+    if [[ -d "/opt/Homelab/dotfiles/vim" ]]; then
+        vimrc_source="/opt/Homelab/dotfiles/vim/.vimrc"
+    elif [[ -f "$HOME/.vimrc" ]]; then
+        # Follow symlink to get actual file
+        vimrc_source="$(readlink -f "$HOME/.vimrc")"
+    fi
+    
     # Check if vim setup already completed
     if [[ -f "/root/.vimrc" ]] && [[ -d "/root/.vim/undo" ]] && \
        [[ "$force_vim" == "false" ]]; then
@@ -21,31 +30,22 @@ setup_vim_root() {
         log_info "Creating user vim undo directory: $user_vim_undo"
         mkdir -p "$user_vim_undo"
         log_success "User vim undo directory created"
-    else
-        log_info "User vim undo directory already exists: $user_vim_undo"
     fi
     
     # Copy .vimrc to root home directory
-    local user_vimrc="$HOME/.vimrc"
     local root_vimrc="/root/.vimrc"
     
-    if [[ ! -f "$user_vimrc" ]]; then
-        log_warning "User .vimrc not found at $user_vimrc"
+    if [[ -z "$vimrc_source" ]] || [[ ! -f "$vimrc_source" ]]; then
+        log_warning "No .vimrc source found"
         log_info "Skipping vimrc copy to root"
     else
-        if [[ ! -f "$root_vimrc" ]]; then
-            log_info "Copying .vimrc to /root/.vimrc..."
-            sudo cp "$user_vimrc" "$root_vimrc"
+        if [[ ! -f "$root_vimrc" ]] || [[ "$force_vim" == "true" ]]; then
+            log_info "Copying .vimrc to /root/.vimrc from ${vimrc_source}..."
+            sudo cp "$vimrc_source" "$root_vimrc"
+            sudo chown root:root "$root_vimrc"
             log_success "Vimrc copied to root"
         else
-            if [[ "$force_vim" == "true" ]]; then
-                log_info "Force flag set. Re-copying .vimrc..."
-                sudo cp "$user_vimrc" "$root_vimrc"
-                log_success "Vimrc copied to root"
-            else
-                log_info "Root .vimrc already exists. Skipping copy."
-                log_info "Use --force flag to overwrite"
-            fi
+            log_info "Root .vimrc already exists. Use --force to overwrite"
         fi
     fi
     
@@ -55,7 +55,5 @@ setup_vim_root() {
         log_info "Creating root vim undo directory: $root_vim_undo"
         sudo mkdir -p "$root_vim_undo"
         log_success "Root vim undo directory created"
-    else
-        log_info "Root vim undo directory already exists: $root_vim_undo"
     fi
 }

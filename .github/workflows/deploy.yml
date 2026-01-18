@@ -36,20 +36,19 @@ jobs:
           username: ${{ env.SSH_USER }}
           key: ${{ env.SSH_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/Homelab || exit 1
+            cd /opt/Homelab || exit 1
             git pull origin main
             echo "Repository updated successfully"
 
-      - name: Stow Dotfiles
+      - name: Restow Dotfiles
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.SSH_HOST }}
           username: ${{ env.SSH_USER }}
           key: ${{ env.SSH_KEY }}
           script: |
-            cd /home/${{ secrets.SSH_USER }}/Homelab || exit 1
-            rm -rf /home/${{ secrets.SSH_USER }}/dotfiles || exit 1
-            cp -r dotfiles /home/${{ secrets.SSH_USER }}/ || exit 1
-            cd /home/${{ secrets.SSH_USER }}/dotfiles || exit 1
-            stow . || exit 1
-            echo "Dotfiles stowed successfully"
+            if command -v stow >/dev/null 2>&1; then
+              /opt/Homelab/cli/bootstrap/phases/dotfiles.sh restow
+            else
+              echo "Stow not installed, skipping dotfiles update"
+            fi

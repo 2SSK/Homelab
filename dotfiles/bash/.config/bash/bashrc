@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+#
+# Production Bash Configuration
+# Managed by GNU Stow from /opt/Homelab/dotfiles
+#
+# This file is symlinked to ~/.config/bash/bashrc
+# Source this from ~/.bashrc: [[ -f ~/.config/bash/bashrc ]] && source ~/.config/bash/bashrc
+#
+
+# =============================================================================
+# EARLY EXIT FOR NON-INTERACTIVE SHELLS
+# =============================================================================
+
+[[ $- != *i* ]] && return
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+readonly BASH_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
+readonly DOTFILES_PROFILE="${DOTFILES_PROFILE:-server}"
+
+# =============================================================================
+# SHELL OPTIONS
+# =============================================================================
+
+# History
+HISTSIZE=10000
+HISTFILESIZE=20000
+HISTCONTROL=ignoreboth:erasedups
+HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help"
+HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S  "
+shopt -s histappend
+
+# Directory navigation
+shopt -s autocd 2>/dev/null
+shopt -s cdspell
+shopt -s dirspell 2>/dev/null
+shopt -s direxpand 2>/dev/null
+
+# Globbing
+shopt -s globstar 2>/dev/null
+shopt -s extglob
+shopt -s nocaseglob
+
+# Misc
+shopt -s checkwinsize
+shopt -s cmdhist
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+
+export EDITOR="${EDITOR:-vim}"
+export VISUAL="${VISUAL:-vim}"
+export PAGER="${PAGER:-less}"
+export LESS="-R -F -X"
+
+# XDG Base Directory
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+
+# PATH (avoid duplicates)
+add_to_path() {
+    case ":${PATH}:" in
+        *:"$1":*) ;;
+        *) export PATH="$1:${PATH}" ;;
+    esac
+}
+
+add_to_path "${HOME}/.local/bin"
+add_to_path "${HOME}/bin"
+add_to_path "/usr/local/bin"
+
+# =============================================================================
+# SOURCE MODULAR CONFIGS
+# =============================================================================
+
+source_if_exists() {
+    local file="$1"
+    [[ -f "${file}" ]] && source "${file}"
+}
+
+# Core modules (order matters)
+source_if_exists "${BASH_CONFIG_DIR}/aliases.bash"
+source_if_exists "${BASH_CONFIG_DIR}/prompt.bash"
+source_if_exists "${BASH_CONFIG_DIR}/keybinds.bash"
+source_if_exists "${BASH_CONFIG_DIR}/fzf.bash"
+
+# Functions
+source_if_exists "${BASH_CONFIG_DIR}/functions/system.bash"
+source_if_exists "${BASH_CONFIG_DIR}/functions/utils.bash"
+
+# Local overrides (not tracked in git)
+source_if_exists "${BASH_CONFIG_DIR}/local.bash"
+source_if_exists "${HOME}/.bashrc.local"
+
+# =============================================================================
+# PROFILE-SPECIFIC CONFIGURATION
+# =============================================================================
+
+case "${DOTFILES_PROFILE}" in
+    server)
+        # Server-specific settings
+        export TERM="${TERM:-xterm-256color}"
+        ;;
+    workstation)
+        # Workstation-specific settings
+        source_if_exists "${BASH_CONFIG_DIR}/workstation.bash"
+        ;;
+    minimal)
+        # Minimal profile - skip optional features
+        ;;
+esac
+
+# =============================================================================
+# WELCOME MESSAGE (optional, for SSH sessions)
+# =============================================================================
+
+if [[ -n "${SSH_CONNECTION}" ]] && command -v neofetch &>/dev/null; then
+    neofetch --config none 2>/dev/null || true
+fi
