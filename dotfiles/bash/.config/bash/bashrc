@@ -17,8 +17,11 @@
 # CONFIGURATION
 # =============================================================================
 
-readonly BASH_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
-readonly DOTFILES_PROFILE="${DOTFILES_PROFILE:-server}"
+# Guard against re-sourcing (readonly can't be set twice)
+if [[ -z "${BASH_CONFIG_DIR:-}" ]]; then
+    declare -r BASH_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/bash"
+    declare -r DOTFILES_PROFILE="${DOTFILES_PROFILE:-server}"
+fi
 
 # =============================================================================
 # SHELL OPTIONS

@@ -16,7 +16,6 @@ readonly PROMPT_BLUE="\[\e[1;34m\]"
 readonly PROMPT_MAGENTA="\[\e[1;35m\]"
 readonly PROMPT_CYAN="\[\e[1;36m\]"
 readonly PROMPT_WHITE="\[\e[1;37m\]"
-readonly PROMPT_GRAY="\[\e[1;90m\]"
 readonly PROMPT_RESET="\[\e[0m\]"
 
 # =============================================================================
@@ -71,6 +70,26 @@ __ssh_indicator() {
     [[ -n "${SSH_CONNECTION}" ]] && echo "${PROMPT_RED}[ssh]${PROMPT_RESET}"
 }
 
+__battery_status() {
+    local bat_path="/sys/class/power_supply/BAT0"
+    [[ ! -d "$bat_path" ]] && bat_path="/sys/class/power_supply/BAT1"
+    [[ ! -d "$bat_path" ]] && return
+    
+    local cap status icon
+    cap=$(cat "$bat_path/capacity" 2>/dev/null) || return
+    status=$(cat "$bat_path/status" 2>/dev/null)
+    
+    if [[ "$status" == "Charging" ]]; then
+        icon="⚡"
+    elif [[ $cap -le 20 ]]; then
+        icon="🔋"
+    else
+        icon="🔋"
+    fi
+    
+    echo "${icon}${cap}%"
+}
+
 __virtualenv_indicator() {
     [[ -n "${VIRTUAL_ENV}" ]] && echo "${PROMPT_MAGENTA}($(basename "${VIRTUAL_ENV}"))${PROMPT_RESET} "
 }
@@ -117,6 +136,11 @@ __set_prompt() {
     
     # New line and prompt character
     PS1+="\n"
+    
+    # Battery status
+    local battery
+    battery=$(__battery_status)
+    [[ -n "$battery" ]] && PS1+="${PROMPT_YELLOW}${battery}${PROMPT_RESET} "
     
     # Prompt character (# for root, $ for user)
     if [[ ${EUID} -eq 0 ]]; then

@@ -19,7 +19,7 @@ install_base_packages() {
     fi
 
     # Install base packages
-    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential fzf fd ripgrep tree xclip stow)
+    local packages=(curl wget git vim ufw fail2ban btop net-tools build-essential fzf ripgrep tree xclip stow)
 
     for package in "${packages[@]}"; do
         if ! dpkg -l | grep -q "^ii  $package "; then
