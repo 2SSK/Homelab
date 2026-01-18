@@ -8,15 +8,17 @@
 # COLOR DEFINITIONS
 # =============================================================================
 
-# Standard colors with prompt escape sequences
-readonly PROMPT_RED="\[\e[1;31m\]"
-readonly PROMPT_GREEN="\[\e[1;32m\]"
-readonly PROMPT_YELLOW="\[\e[1;33m\]"
-readonly PROMPT_BLUE="\[\e[1;34m\]"
-readonly PROMPT_MAGENTA="\[\e[1;35m\]"
-readonly PROMPT_CYAN="\[\e[1;36m\]"
-readonly PROMPT_WHITE="\[\e[1;37m\]"
-readonly PROMPT_RESET="\[\e[0m\]"
+# Standard colors with prompt escape sequences (guard against re-sourcing)
+if [[ -z "${PROMPT_RED:-}" ]]; then
+    readonly PROMPT_RED="\[\e[1;31m\]"
+    readonly PROMPT_GREEN="\[\e[1;32m\]"
+    readonly PROMPT_YELLOW="\[\e[1;33m\]"
+    readonly PROMPT_BLUE="\[\e[1;34m\]"
+    readonly PROMPT_MAGENTA="\[\e[1;35m\]"
+    readonly PROMPT_CYAN="\[\e[1;36m\]"
+    readonly PROMPT_WHITE="\[\e[1;37m\]"
+    readonly PROMPT_RESET="\[\e[0m\]"
+fi
 
 # =============================================================================
 # GIT PROMPT FUNCTIONS

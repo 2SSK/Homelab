@@ -75,7 +75,7 @@ myip() {
     echo
 }
 alias ports='ss -tulanp'
-alias listening='ss -tlnp'
+# listening is a function in system.bash
 
 # =============================================================================
 # PACKAGE MANAGEMENT (Debian/Ubuntu)

@@ -5,8 +5,10 @@
 
 set -euo pipefail
 
-# Logging setup
-LOG_FILE="${LOG_FILE:-bootstrap.log}"
+# Logging setup - use XDG_STATE_HOME for runtime logs
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/homelab"
+mkdir -p "${LOG_DIR}"
+LOG_FILE="${LOG_FILE:-${LOG_DIR}/bootstrap.log}"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 # Error trap
