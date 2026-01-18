@@ -42,6 +42,8 @@ exec bash
 homelab help                    # Show available commands
 homelab dotfiles restow         # Update dotfiles after changes
 homelab install docker          # Install Docker
+homelab install observability   # Deploy monitoring stack
+homelab observability status    # Check monitoring status
 homelab maintain tethering      # Update USB tethering config
 ```
 
@@ -52,6 +54,7 @@ homelab maintain tethering      # Update USB tethering config
 | [Installation](docs/installation.md)         | Full bootstrap process and file locations |
 | [Dotfiles](docs/dotfiles.md)                 | Bash/vim configuration and customization  |
 | [CLI Reference](docs/cli.md)                 | All commands and Makefile targets         |
+| [Observability](docs/observability.md)       | Prometheus, Grafana, Loki monitoring      |
 | [systemd-networkd](docs/systemd-networkd.md) | USB tethering network setup               |
 
 ## Project Structure
@@ -67,9 +70,22 @@ homelab maintain tethering      # Update USB tethering config
 ├── dotfiles/
 │   ├── bash/                   # Bash configuration (stow package)
 │   └── vim/                    # Vim configuration (stow package)
+├── stacks/
+│   └── observability/          # Prometheus, Grafana, Loki stack
 ├── docs/                       # Documentation
 └── Makefile                    # Make targets
 ```
+
+## Observability Stack
+
+Full monitoring with resource constraints for low-power servers:
+
+| Component | Purpose | Memory |
+|-----------|---------|--------|
+| Prometheus | Metrics | 512 MB |
+| Grafana | Dashboards | 256 MB |
+| Loki | Logs | 256 MB |
+| Alertmanager | Email alerts | 64 MB |
 
 ## Dotfiles Highlights
 

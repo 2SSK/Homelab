@@ -1,0 +1,38 @@
+[Unit]
+Description=Homelab Observability Stack (Prometheus, Grafana, Loki)
+Documentation=https://github.com/yourusername/Homelab
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/srv/docker/observability
+
+# Start the stack
+ExecStart=/usr/bin/docker compose up -d --remove-orphans
+
+# Stop the stack gracefully
+ExecStop=/usr/bin/docker compose down
+
+# Reload: restart containers (useful after config changes)
+ExecReload=/usr/bin/docker compose restart
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=observability
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/srv/data/observability
+PrivateTmp=true
+
+# Restart policy handled by Docker, not systemd
+# Docker containers have restart: unless-stopped
+
+[Install]
+WantedBy=multi-user.target

@@ -26,18 +26,29 @@ USAGE:
     homelab <COMMAND> [SUBCOMMAND]
 
  COMMANDS:
-     bootstrap   Bootstrap a fresh Ubuntu server for homelab use
-     install     Install software and scripts
-     maintain    Perform maintenance tasks
-     remove      Remove installed software (not implemented)
-     self-update Update CLI symlink to point to current repository
-     help        Show this help message
+     bootstrap     Bootstrap a fresh Ubuntu server for homelab use
+     install       Install software and scripts
+     maintain      Perform maintenance tasks
+     observability Manage observability stack (Prometheus, Grafana, Loki)
+     dotfiles      Manage dotfiles (stow, unstow, restow, verify, status)
+     remove        Remove installed software (not implemented)
+     self-update   Update CLI symlink to point to current repository
+     help          Show this help message
  
  INSTALL SUBCOMMANDS:
-     docker      Install Docker and Docker Compose
+     docker        Install Docker and Docker Compose
+     observability Install observability stack
+ 
+ OBSERVABILITY SUBCOMMANDS:
+     install       Deploy the observability stack
+     status        Show stack status and access URLs
+     stop          Stop all services
+     restart       Restart all services
+     logs [svc]    Follow logs (optionally specify service)
+     destroy       Remove stack and all data
  
  MAINTAIN SUBCOMMANDS:
-     tethering   Update USB tethering network configuration
+     tethering     Update USB tethering network configuration
  
  SELF-UPDATE OPTIONS:
      --force     Force update even if symlink already points correctly
@@ -70,17 +81,25 @@ case $command in
                 bash "$CLI_DIR/install/docker.sh"
                 echo "Docker installation completed."
                 ;;
+            observability)
+                bash "$CLI_DIR/install/observability.sh" install
+                ;;
             "")
                 echo "Error: install command requires a subcommand."
-                echo "Available subcommands: docker"
+                echo "Available subcommands: docker, observability"
                 exit 1
                 ;;
             *)
                 echo "Error: unknown install subcommand '$subcommand'"
-                echo "Available subcommands: docker"
+                echo "Available subcommands: docker, observability"
                 exit 1
                 ;;
         esac
+        ;;
+    observability)
+        # Pass all remaining args to observability script
+        shift
+        bash "$CLI_DIR/install/observability.sh" "$@"
         ;;
     maintain)
         case $subcommand in
@@ -100,6 +119,10 @@ case $command in
                 exit 1
                 ;;
         esac
+        ;;
+    dotfiles)
+        # Pass subcommand to dotfiles script
+        bash "$CLI_DIR/bootstrap/phases/dotfiles.sh" "${subcommand:-status}"
         ;;
     remove)
         echo "Remove functionality not implemented yet."

@@ -1,0 +1,67 @@
+# Loki Configuration
+# Optimized for low-resource homelab
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/boltdb-shipper-active
+    cache_location: /loki/boltdb-shipper-cache
+    cache_ttl: 24h
+    shared_store: filesystem
+  filesystem:
+    directory: /loki/chunks
+
+compactor:
+  working_directory: /loki/boltdb-shipper-compactor
+  shared_store: filesystem
+
+limits_config:
+  # Retention
+  retention_period: 168h  # 7 days
+  
+  # Ingestion limits (low for resource constraints)
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 6
+  per_stream_rate_limit: 3MB
+  per_stream_rate_limit_burst: 15MB
+  
+  # Query limits
+  max_entries_limit_per_query: 5000
+  max_query_series: 500
+
+chunk_store_config:
+  max_look_back_period: 168h  # 7 days
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 168h  # 7 days
+
+# Disable analytics
+analytics:
+  reporting_enabled: false

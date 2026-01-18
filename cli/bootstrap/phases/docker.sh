@@ -17,7 +17,7 @@ setup_docker() {
         fi
     fi
 
-    local install_script="$HOME/Homelab/cli/install/docker.sh"
+    local install_script="/opt/Homelab/cli/install/docker.sh"
     if [[ -f "$install_script" ]]; then
         log_info "Installing Docker using homelab script..."
         bash "$install_script"

@@ -18,7 +18,7 @@ install_cli() {
         bootstrap_dir="$(cd "${BASH_SOURCE[0]%/*}/../.." && pwd)"
     else
         # Fallback to default location
-        bootstrap_dir="$HOME/Homelab/cli"
+        bootstrap_dir="/opt/Homelab/cli"
     fi
     
     # CLI script is in the cli directory

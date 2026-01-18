@@ -1,0 +1,94 @@
+# Alertmanager Configuration Template
+# This file is processed by envsubst during installation
+# Do not use ${VAR} syntax in the actual alertmanager.yml - it won't work
+#
+# Email notifications for homelab alerts
+
+global:
+  # SMTP configuration for email alerts
+  smtp_smarthost: '__SMTP_HOST__'
+  smtp_from: '__SMTP_FROM__'
+  smtp_auth_username: '__SMTP_USER__'
+  smtp_auth_password: '__SMTP_PASSWORD__'
+  smtp_require_tls: true
+
+  # Default resolve timeout
+  resolve_timeout: 5m
+
+# Route configuration
+route:
+  # Default receiver
+  receiver: 'email-notifications'
+  
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'instance']
+  
+  # Wait before sending first notification
+  group_wait: 30s
+  
+  # Wait before sending updated notification
+  group_interval: 5m
+  
+  # Minimum time between notifications for same alert
+  repeat_interval: 4h
+
+  # Route by severity
+  routes:
+    # Critical alerts - immediate
+    - match:
+        severity: critical
+      receiver: 'email-critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Warning alerts - batched
+    - match:
+        severity: warning
+      receiver: 'email-notifications'
+      group_wait: 5m
+      repeat_interval: 4h
+
+# Receivers
+receivers:
+  - name: 'email-notifications'
+    email_configs:
+      - to: '__ALERT_EMAIL__'
+        send_resolved: true
+        headers:
+          Subject: '[Homelab] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        html: |
+          {{ range .Alerts }}
+          <h3>{{ .Status | toUpper }}: {{ .Labels.alertname }}</h3>
+          <p><strong>Instance:</strong> {{ .Labels.instance }}</p>
+          <p><strong>Severity:</strong> {{ .Labels.severity }}</p>
+          <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Time:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05" }}</p>
+          <hr>
+          {{ end }}
+
+  - name: 'email-critical'
+    email_configs:
+      - to: '__ALERT_EMAIL__'
+        send_resolved: true
+        headers:
+          Subject: '[Homelab] 🚨 CRITICAL - {{ .CommonLabels.alertname }}'
+        html: |
+          <h2 style="color: red;">🚨 CRITICAL ALERT</h2>
+          {{ range .Alerts }}
+          <h3>{{ .Labels.alertname }}</h3>
+          <p><strong>Instance:</strong> {{ .Labels.instance }}</p>
+          <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Time:</strong> {{ .StartsAt.Format "2006-01-02 15:04:05" }}</p>
+          <hr>
+          {{ end }}
+
+# Inhibition rules - prevent duplicate alerts
+inhibit_rules:
+  # If critical is firing, silence warning for same alertname
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']

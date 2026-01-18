@@ -1,0 +1,97 @@
+# Promtail Configuration
+# Ships logs to Loki from host and containers
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  # Persistent positions file - survives container restarts
+  # Mounted to /srv/data/observability/promtail on host
+  filename: /var/promtail/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ==========================================================================
+  # SYSTEM LOGS
+  # ==========================================================================
+  
+  # Syslog
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          host: homelab
+          __path__: /var/log/syslog
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\w+)\s+(?P<process>[\w\-\[\]]+):\s+(?P<message>.*)$'
+      - labels:
+          hostname:
+          process:
+      - timestamp:
+          source: timestamp
+          format: 'Jan _2 15:04:05'
+
+  # Auth log
+  - job_name: auth
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth
+          host: homelab
+          __path__: /var/log/auth.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\w+)\s+(?P<process>[\w\-\[\]]+):\s+(?P<message>.*)$'
+      - labels:
+          hostname:
+          process:
+
+  # Kernel log
+  - job_name: kernel
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: kernel
+          host: homelab
+          __path__: /var/log/kern.log
+
+  # ==========================================================================
+  # DOCKER CONTAINER LOGS
+  # ==========================================================================
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: homelab
+          __path__: /var/lib/docker/containers/*/*-json.log
+    pipeline_stages:
+      # Parse Docker JSON log format
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            time: time
+      - output:
+          source: output
+      - labels:
+          stream:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+      
+      # Extract container name from path
+      - regex:
+          source: filename
+          expression: '/var/lib/docker/containers/(?P<container_id>[^/]+)/.*'
+      - labels:
+          container_id:
