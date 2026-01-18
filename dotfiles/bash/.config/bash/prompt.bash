@@ -75,17 +75,9 @@ __battery_status() {
     [[ ! -d "$bat_path" ]] && bat_path="/sys/class/power_supply/BAT1"
     [[ ! -d "$bat_path" ]] && return
     
-    local cap status icon
+    local cap icon
     cap=$(cat "$bat_path/capacity" 2>/dev/null) || return
-    status=$(cat "$bat_path/status" 2>/dev/null)
-    
-    if [[ "$status" == "Charging" ]]; then
-        icon="⚡"
-    elif [[ $cap -le 20 ]]; then
-        icon="🔋"
-    else
-        icon="🔋"
-    fi
+    icon="⚡"
     
     echo "${icon}${cap}%"
 }

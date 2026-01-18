@@ -217,17 +217,18 @@ verify_stow() {
             local relative_path="${file#"${package_dir}"/}"
             local target_path="${STOW_TARGET}/${relative_path}"
             
-            if [[ -L "${target_path}" ]]; then
-                local link_target
-                link_target=$(readlink -f "${target_path}")
-                if [[ "${link_target}" == "${file}" ]]; then
-                    echo -e "  ${GREEN}✓${NC} ${target_path}"
-                else
-                    log_error "✗ ${target_path} points to wrong target"
-                    ((errors++))
-                fi
+            # Check if target resolves to the correct source file
+            # Stow may create directory symlinks, so files inside aren't direct symlinks
+            local resolved_path
+            resolved_path=$(readlink -f "${target_path}" 2>/dev/null)
+            
+            if [[ "${resolved_path}" == "${file}" ]]; then
+                echo -e "  ${GREEN}✓${NC} ${relative_path}"
+            elif [[ ! -e "${target_path}" ]]; then
+                log_error "✗ ${relative_path} does not exist"
+                ((errors++))
             else
-                log_error "✗ ${target_path} is not a symlink"
+                log_error "✗ ${relative_path} resolves to wrong target"
                 ((errors++))
             fi
         done < <(find "${package_dir}" -type f -print0 2>/dev/null)
