@@ -208,7 +208,9 @@ services:
     networks:
       - observability
     healthcheck:
-      # promtail image doesn't include wget; use bash TCP check instead
+      # PATTERN: Bash TCP check (for minimal images without wget/curl)
+      # The promtail image doesn't include wget; use bash TCP check instead
+      # See: docs/adr/0001-healthcheck-strategies.md
       test:
         [
           "CMD-SHELL",

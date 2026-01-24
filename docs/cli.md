@@ -53,6 +53,37 @@ Install specific components:
 homelab install docker      # Install Docker + Compose
 ```
 
+### Observability
+
+Manage the monitoring stack:
+
+```bash
+homelab observability install          # Deploy full stack
+homelab observability status           # Show status and access URLs
+homelab observability stop             # Stop all services
+homelab observability restart          # Restart services
+homelab observability logs [service]   # Follow logs (optional: specific service)
+homelab observability regenerate-config # Regenerate alertmanager config
+homelab observability reset-password   # Reset Grafana admin password
+homelab observability destroy          # Remove stack and data (requires confirmation)
+```
+
+**Examples:**
+```bash
+# Initial installation
+homelab install observability
+
+# Check if services are healthy
+homelab observability status
+
+# View logs for specific service
+homelab observability logs promtail
+
+# Update configuration after editing .env
+homelab observability regenerate-config
+homelab observability restart
+```
+
 ### Maintain
 
 Maintenance tasks:

@@ -1,12 +1,17 @@
 # Grafana Datasource Provisioning
 # Auto-configure Prometheus and Loki datasources
+#
+# IMPORTANT: All datasources use stable UIDs for dashboard portability
+# - Dashboards can be exported/imported without datasource remapping
+# - UIDs remain consistent across Grafana restarts
+# - See: docs/adr/0002-datasource-uid-stability.md
 
 apiVersion: 1
 
 datasources:
   # Prometheus - Metrics
   - name: Prometheus
-    uid: prometheus
+    uid: prometheus  # Stable UID for dashboard portability
     type: prometheus
     access: proxy
     url: http://prometheus:9090
@@ -20,7 +25,7 @@ datasources:
 
   # Loki - Logs
   - name: Loki
-    uid: loki
+    uid: loki  # Stable UID for dashboard portability
     type: loki
     access: proxy
     url: http://loki:3100
@@ -35,7 +40,7 @@ datasources:
 
   # Alertmanager
   - name: Alertmanager
-    uid: alertmanager
+    uid: alertmanager  # Stable UID for dashboard portability
     type: alertmanager
     access: proxy
     url: http://alertmanager:9093

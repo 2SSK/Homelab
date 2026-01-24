@@ -80,12 +80,15 @@ homelab maintain tethering      # Update USB tethering config
 
 Full monitoring with resource constraints for low-power servers:
 
-| Component | Purpose | Memory |
-|-----------|---------|--------|
-| Prometheus | Metrics | 512 MB |
-| Grafana | Dashboards | 256 MB |
-| Loki | Logs | 256 MB |
-| Alertmanager | Email alerts | 64 MB |
+| Component | Purpose | Memory | Health Monitoring |
+|-----------|---------|--------|-------------------|
+| Prometheus | Metrics | 512 MB | ✓ |
+| Grafana | Dashboards | 256 MB | ✓ |
+| Loki | Logs | 256 MB | ✓ |
+| Alertmanager | Email alerts | 64 MB | ✓ |
+
+> All services include Docker healthchecks for automatic restart on failure.
+> Grafana datasources use stable UIDs for dashboard portability.
 
 ## Dotfiles Highlights
 

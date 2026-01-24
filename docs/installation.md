@@ -85,6 +85,20 @@ ls -la ~/.bashrc ~/.config/bash/
 exec bash
 ```
 
+## Post-Installation (Optional)
+
+### Install Observability Stack
+
+After bootstrap completes, optionally install monitoring:
+
+```bash
+homelab install observability
+```
+
+Follow the prompts to configure Grafana password and email alerts.
+
+See [Observability Documentation](observability.md) for full setup guide.
+
 ## Logs
 
 Bootstrap logs are stored at:

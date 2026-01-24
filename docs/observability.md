@@ -189,6 +189,97 @@ Recommended:
 - **893** - Docker and Host Monitoring
 - **13639** - Loki Dashboard
 
+> **Important: Dashboard Portability**
+> All datasources now have stable UIDs:
+> - Prometheus: `prometheus`
+> - Loki: `loki`
+> - Alertmanager: `alertmanager`
+>
+> When importing dashboards from Grafana.com or sharing dashboards between instances:
+> - Dashboards using these standard UID names will work without modification
+> - No need to manually remap datasources after import
+> - Exported dashboards remain portable across Homelab instances
+
+## Configuration Details
+
+### Datasource UIDs
+
+All Grafana datasources use stable, predictable UIDs for reliable references:
+
+| Datasource | UID | Purpose |
+|------------|-----|---------|
+| Prometheus | `prometheus` | Metrics queries and dashboard references |
+| Loki | `loki` | Log queries and derived fields |
+| Alertmanager | `alertmanager` | Alert management UI integration |
+
+**Why UIDs Matter:**
+
+1. **Dashboard Portability**: Dashboards exported from one instance work on another without datasource remapping
+2. **Stable References**: Queries and alerts maintain references across Grafana restarts
+3. **API Consistency**: External tools can reliably reference datasources via API
+4. **Version Control**: Dashboard JSON files remain consistent for git tracking
+
+**Technical Details:**
+- UIDs are defined in `/opt/Homelab/stacks/observability/grafana/provisioning/datasources/datasources.yml`
+- Provisioning happens at Grafana startup
+- UIDs cannot be changed via Grafana UI (defined as `editable: false`)
+- Custom datasources should follow the pattern: `<service-name>` (lowercase, no special chars)
+
+See [ADR 0002: Datasource UID Stability](adr/0002-datasource-uid-stability.md) for architectural decision details.
+
+### Healthcheck Implementations
+
+The stack uses Docker healthchecks to ensure proper startup ordering and failure detection:
+
+| Service | Method | Endpoint | Notes |
+|---------|--------|----------|-------|
+| Prometheus | wget | `/-/healthy` | Standard Prometheus endpoint |
+| Loki | wget | `/ready` | Waits for storage initialization |
+| Grafana | wget | `/api/health` | Checks database and provisioning |
+| Alertmanager | wget | `/-/healthy` | Standard Alertmanager endpoint |
+| Node Exporter | wget | `/metrics` | Simple metric availability check |
+| cAdvisor | wget | `/healthz` | Built-in healthz endpoint |
+| Promtail | bash TCP | `:9080/ready` | **No wget in image** - uses `/dev/tcp` |
+
+**Promtail Healthcheck Details:**
+
+Promtail uses a bash TCP connection check instead of wget:
+
+```yaml
+test:
+  [
+    "CMD-SHELL",
+    "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/9080; printf \"GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; read -r line <&3; [[ \"$$line\" == *\"200\"* ]]'",
+  ]
+```
+
+**Why not wget?:**
+- The `grafana/promtail` official image is built on a minimal base without `wget` or `curl`
+- Adding these tools would increase image size unnecessarily
+- Bash is available and `/dev/tcp` is a built-in bash feature
+- This approach is more lightweight and faster than spawning wget
+
+**How it works:**
+1. Opens TCP connection to `127.0.0.1:9080` (file descriptor 3)
+2. Sends HTTP GET request to `/ready` endpoint
+3. Reads response line
+4. Checks for `200` status code in response
+5. Returns success (0) or failure (non-zero) exit code
+
+**Troubleshooting TCP healthcheck:**
+```bash
+# Test manually inside container
+docker exec promtail bash -c 'exec 3<>/dev/tcp/127.0.0.1/9080 && echo "Connection OK"'
+
+# Check if promtail HTTP server is running
+docker exec promtail netstat -tlnp | grep 9080
+
+# View raw healthcheck logs
+docker inspect promtail | jq '.[0].State.Health.Log[-3:]'
+```
+
+See [ADR 0001: Healthcheck Strategies](adr/0001-healthcheck-strategies.md) for the full decision context.
+
 ## Alerts
 
 ### Configured Alerts
@@ -256,6 +347,31 @@ docker compose -f /opt/Homelab/stacks/observability/compose.yaml ps
 docker compose -f /opt/Homelab/stacks/observability/compose.yaml logs
 ```
 
+#### Healthcheck Failures
+
+If containers show as unhealthy:
+
+```bash
+docker compose -f /opt/Homelab/stacks/observability/compose.yaml ps
+```
+
+**Promtail healthcheck specifics:**
+- The promtail image does not include `wget` or `curl`
+- Uses bash TCP connection check instead: `/dev/tcp/127.0.0.1/9080`
+- If healthcheck fails, verify promtail is listening: `docker logs promtail`
+- Port 9080 is promtail's HTTP server for metrics and health endpoint
+
+**General healthcheck debugging:**
+```bash
+# Check specific container health
+docker inspect --format='{{json .State.Health}}' <container_name> | jq
+
+# View healthcheck logs
+docker inspect <container_name> | jq '.[0].State.Health.Log'
+```
+
+See [ADR 0001: Healthcheck Strategies](adr/0001-healthcheck-strategies.md) for technical details.
+
 ### No Email Alerts
 
 1. Check Alertmanager config:
@@ -310,6 +426,9 @@ curl -s http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {job:
 ├── grafana/
 │   └── provisioning/
 │       ├── datasources/              # Auto-configured datasources
+│       │   └── datasources.yml      # Prometheus, Loki, Alertmanager
+│       │                            # All use stable UIDs for portability
+│       │                            # prometheus, loki, alertmanager
 │       └── dashboards/               # Auto-imported dashboards
 └── systemd/
     └── observability.service         # Systemd unit
