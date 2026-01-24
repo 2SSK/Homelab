@@ -208,7 +208,12 @@ services:
     networks:
       - observability
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9080/ready"]
+      # promtail image doesn't include wget; use bash TCP check instead
+      test:
+        [
+          "CMD-SHELL",
+          "bash -lc 'exec 3<>/dev/tcp/127.0.0.1/9080; printf \"GET /ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; read -r line <&3; [[ \"$$line\" == *\"200\"* ]]'",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -254,7 +259,8 @@ services:
       loki:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      test:
+        ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

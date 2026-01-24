@@ -6,6 +6,7 @@ apiVersion: 1
 datasources:
   # Prometheus - Metrics
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus:9090
@@ -19,6 +20,7 @@ datasources:
 
   # Loki - Logs
   - name: Loki
+    uid: loki
     type: loki
     access: proxy
     url: http://loki:3100
@@ -29,10 +31,11 @@ datasources:
         - datasourceUid: prometheus
           matcherRegex: "container_id=(\\w+)"
           name: ContainerID
-          url: '$${__value.raw}'
+          url: "$${__value.raw}"
 
   # Alertmanager
   - name: Alertmanager
+    uid: alertmanager
     type: alertmanager
     access: proxy
     url: http://alertmanager:9093
