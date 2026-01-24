@@ -156,7 +156,10 @@ generate_alertmanager_config() {
         -e "s|__ALERT_EMAIL__|${ALERT_EMAIL:-admin@localhost}|g" \
         "${template}" > "${output}"
     
-    chmod 600 "${output}"
+    # Must be readable by alertmanager container (runs as nobody - UID 65534)
+    # Using 640 for security (contains SMTP credentials), relying on same-group access
+    # If alertmanager fails to read, fall back to 644
+    chmod 640 "${output}"
     
     log_success "Alertmanager configuration generated"
 }
@@ -389,8 +392,12 @@ main() {
             generate_alertmanager_config
             log_info "Restart the stack to apply: homelab observability restart"
             ;;
+        reset-password)
+            shift
+            "${SCRIPT_DIR}/../maintain/reset-grafana-password.sh" "$@"
+            ;;
         *)
-            echo "Usage: $0 {install|status|stop|restart|logs|destroy|regenerate-config}"
+            echo "Usage: $0 {install|status|stop|restart|logs|destroy|regenerate-config|reset-password}"
             echo ""
             echo "Commands:"
             echo "  install           Deploy the observability stack"
@@ -400,6 +407,7 @@ main() {
             echo "  logs [service]    Follow logs (optionally specify service)"
             echo "  destroy           Remove stack and all data"
             echo "  regenerate-config Regenerate alertmanager.yml from template"
+            echo "  reset-password    Reset Grafana admin password"
             echo ""
             echo "Directory Layout:"
             echo "  ${SOURCE_DIR}  - Source (git)"

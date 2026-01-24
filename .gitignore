@@ -1,1 +1,8 @@
 AGENTS.md
+
+# Runtime generated configs (should not be in git)
+stacks/observability/alertmanager/alertmanager.yml
+
+# Runtime directories (created by install script)
+/srv/docker/
+/srv/data/

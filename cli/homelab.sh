@@ -40,12 +40,14 @@ USAGE:
      observability Install observability stack
  
  OBSERVABILITY SUBCOMMANDS:
-     install       Deploy the observability stack
-     status        Show stack status and access URLs
-     stop          Stop all services
-     restart       Restart all services
-     logs [svc]    Follow logs (optionally specify service)
-     destroy       Remove stack and all data
+     install           Deploy the observability stack
+     status            Show stack status and access URLs
+     stop              Stop all services
+     restart           Restart all services
+     logs [svc]        Follow logs (optionally specify service)
+     destroy           Remove stack and all data
+     regenerate-config Regenerate alertmanager configuration from .env
+     reset-password    Reset Grafana admin password
  
  MAINTAIN SUBCOMMANDS:
      tethering     Update USB tethering network configuration
