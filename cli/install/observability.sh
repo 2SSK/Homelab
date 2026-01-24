@@ -50,6 +50,7 @@ check_env_file() {
     fi
     
     # Validate required variables
+    # shellcheck source=/dev/null
     source "${env_file}"
     
     if [[ -z "${GRAFANA_ADMIN_PASSWORD:-}" ]]; then
@@ -146,6 +147,7 @@ generate_alertmanager_config() {
     fi
     
     # Source environment variables
+    # shellcheck source=/dev/null
     source "${env_file}"
     
     # Replace placeholders with actual values
