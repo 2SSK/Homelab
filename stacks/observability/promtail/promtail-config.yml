@@ -37,7 +37,7 @@ scrape_configs:
           source: timestamp
           format: 'Jan _2 15:04:05'
 
-  # Auth log
+  # Auth log (SSH monitoring)
   - job_name: auth
     static_configs:
       - targets:
@@ -47,11 +47,151 @@ scrape_configs:
           host: homelab
           __path__: /var/log/auth.log
     pipeline_stages:
+      # Extract timestamp, hostname, process, and message
       - regex:
           expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\w+)\s+(?P<process>[\w\-\[\]]+):\s+(?P<message>.*)$'
       - labels:
           hostname:
           process:
+      
+      # SSH Authentication Monitoring - 14 Pattern Regex
+      - regex:
+          expression: '^(?P<message>.*)$'
+      - match:
+          selector: '{job="auth", process="sshd"}'
+      
+      # Pattern 1: Accepted password login
+      - regex:
+          expression: 'Accepted password for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - labels:
+          ssh_event_type: Accepted
+      
+      # Pattern 2: Failed password login
+      - regex:
+          expression: 'Failed password for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - labels:
+          ssh_event_type: Failed
+      
+      # Pattern 3: Invalid user attempt
+      - regex:
+          expression: 'Invalid user (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+)'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - labels:
+          ssh_event_type: Invalid
+      
+      # Pattern 4: Root login attempt
+      - regex:
+          expression: '(Accepted|Failed) (password|publickey) for (root|(?P<ssh_username>\w+)) from (?P<ssh_ip>[\d\.]+)'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - regex:
+          expression: '(root) from (?P<ssh_ip>[\d\.]+)'
+          source: message
+      - labels:
+          ssh_event_type: RootLogin
+      
+      # Pattern 5: Public key authentication
+      - regex:
+          expression: 'Accepted publickey for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - labels:
+          ssh_event_type: Accepted
+      
+      # Pattern 6: Connection closed
+      - regex:
+          expression: 'Disconnected from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+)'
+          source: message
+      - labels:
+          ssh_ip:
+      - labels:
+          ssh_event_type: Disconnected
+      
+      # Pattern 7: Session opened
+      - regex:
+          expression: 'session opened for user (?P<ssh_username>\w+) by (?:\(uid=\d+\)|(?P<ssh_method>\w+))'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_method:
+      - labels:
+          ssh_event_type: SessionOpened
+      
+      # Pattern 8: Session closed
+      - regex:
+          expression: 'session closed for user (?P<ssh_username>\w+)'
+          source: message
+      - labels:
+          ssh_username:
+      - labels:
+          ssh_event_type: SessionClosed
+      
+      # Pattern 9: PAM authentication failure
+      - regex:
+          expression: 'pam_unix\(sshd:auth\): authentication failure; logname=\S* uid=\d+ euid=\d+ tty=\S* ruser=\S* rhost=(?P<ssh_ip>[\d\.]+)'
+          source: message
+      - labels:
+          ssh_ip:
+      - labels:
+          ssh_event_type: PamFailure
+      
+      # Pattern 10: Too many authentication failures
+      - regex:
+          expression: 'Too many authentication failures for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+)'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - labels:
+          ssh_event_type: TooManyFailures
+      
+      # Pattern 11: Break-in attempt
+      - regex:
+          expression: '(Break-in attempt|POSSIBLE BREAK-IN ATTEMPT)'
+          source: message
+      - labels:
+          ssh_event_type: BreakInAttempt
+      
+      # Pattern 12: Maximum authentication attempts exceeded
+      - regex:
+          expression: 'Maximum authentication attempts exceeded'
+          source: message
+      - labels:
+          ssh_event_type: MaxAttemptsExceeded
+      
+      # Pattern 13: User not allowed because account is locked
+      - regex:
+          expression: 'User (?P<ssh_username>\w+) not allowed because account is locked'
+          source: message
+      - labels:
+          ssh_username:
+      - labels:
+          ssh_event_type: AccountLocked
+      
+      # Pattern 14: Preauth error
+      - regex:
+          expression: 'error: maximum authentication attempts exceeded for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port \d+ ssh2'
+          source: message
+      - labels:
+          ssh_username:
+          ssh_ip:
+      - labels:
+          ssh_event_type: MaxAttemptsExceeded
 
   # Kernel log
   - job_name: kernel
@@ -62,6 +202,126 @@ scrape_configs:
           job: kernel
           host: homelab
           __path__: /var/log/kern.log
+
+  # ==========================================================================
+  # FAIL2BAN LOGS - NEW
+  # ==========================================================================
+  - job_name: fail2ban
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: fail2ban
+          host: homelab
+          __path__: /var/log/fail2ban.log
+    pipeline_stages:
+      # Extract timestamp and process
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)\s+(?P<process>\w+)\s+(?P<message>.*)$'
+      - labels:
+          process:
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+      
+      # Pattern 1: Ban event - IP banned by jail
+      - regex:
+          expression: 'Ban (?P<fail2ban_ip>[\d\.]+)'
+          source: message
+      - labels:
+          fail2ban_ip:
+      - labels:
+          fail2ban_event: Ban
+      
+      # Pattern 2: Unban event - IP unbanned
+      - regex:
+          expression: 'Unban (?P<fail2ban_ip>[\d\.]+)'
+          source: message
+      - labels:
+          fail2ban_ip:
+      - labels:
+          fail2ban_event: Unban
+      
+      # Pattern 3: Jail name extraction
+      - regex:
+          expression: '\[(?P<fail2ban_jail>[\w\-]+)\]'
+          source: message
+      - labels:
+          fail2ban_jail:
+      
+      # Pattern 4: Stop event - Fail2ban stopped
+      - regex:
+          expression: 'Stopping\.\.\.'
+          source: message
+      - labels:
+          fail2ban_event: Stop
+      
+      # Pattern 5: Start event - Fail2ban started
+      - regex:
+          expression: 'Starting\.\.\.'
+          source: message
+      - labels:
+          fail2ban_event: Start
+      
+      # Pattern 6: Reload event - Fail2ban reloaded
+      - regex:
+          expression: 'Reloading\.\.\.'
+          source: message
+      - labels:
+          fail2ban_event: Reload
+      
+      # Pattern 7: Ignore event - IP added to ignore list
+      - regex:
+          expression: 'Ignore (?P<fail2ban_ip>[\d\.]+)'
+          source: message
+      - labels:
+          fail2ban_ip:
+      - labels:
+          fail2ban_event: Ignore
+      
+      # Pattern 8: Restore event - Bans restored after restart
+      - regex:
+          expression: 'Restore (?P<fail2ban_ip>[\d\.]+)'
+          source: message
+      - labels:
+          fail2ban_ip:
+      - labels:
+          fail2ban_event: Restore
+      
+      # Pattern 9: Ban duration extraction (e.g., "10m", "1h", "1d")
+      - regex:
+          expression: 'for (?P<fail2ban_duration>[\d]+[smhd])'
+          source: message
+      - labels:
+          fail2ban_duration:
+      
+      # Pattern 10: Ban reason extraction
+      - regex:
+          expression: 'Ban (?P<fail2ban_ip>[\d\.]+).*(?P<fail2ban_reason>.*)'
+          source: message
+      - labels:
+          fail2ban_reason:
+      
+      # Pattern 11: Jail status
+      - regex:
+          expression: 'Jail \'(?P<fail2ban_jail>[\w\-]+)\' (started|stopped|reloaded)'
+          source: message
+      - labels:
+          fail2ban_jail:
+      
+      # Pattern 12: Action executed (e.g., iptables, nftables)
+      - regex:
+          expression: 'Action: (?P<fail2ban_action>[\w\-]+)'
+          source: message
+      - labels:
+          fail2ban_action:
+      
+      # Pattern 13: Ban count per IP
+      - regex:
+          expression: 'Banned (?P<fail2ban_ip>[\d\.]+) \((?P<fail2ban_ban_count>\d+) bans?\)'
+          source: message
+      - labels:
+          fail2ban_ban_count:
 
   # ==========================================================================
   # DOCKER CONTAINER LOGS

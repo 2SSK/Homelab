@@ -1,0 +1,275 @@
+# SSH Authentication Alert Rules
+# Production alerts for SSH security monitoring
+
+groups:
+  - name: ssh_security
+    interval: 30s
+    rules:
+      # ==========================================================================
+      # BRUTE FORCE DETECTION
+      # ==========================================================================
+      - alert: SSHBruteForceAttack
+        expr: |
+          (
+            sum by (ssh_ip) (
+              count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])
+            ) > 10
+          )
+        for: 0m
+        labels:
+          severity: critical
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "Brute force attack detected from IP {{ $labels.ssh_ip }}"
+          description: "{{ $value }} failed SSH login attempts from {{ $labels.ssh_ip }} in the last 5 minutes. This indicates a brute force attack."
+          runbook_url: "https://wiki.internal.com/security/ssh-brute-force"
+
+      - alert: SSHHighFailureRate
+        expr: |
+          sum(count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])) > 50
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "High rate of SSH authentication failures"
+          description: "{{ $value }} failed SSH authentication attempts in the last 5 minutes across all sources"
+          runbook_url: "https://wiki.internal.com/security/ssh-failures"
+
+      - alert: SSHRapidFireAttacks
+        expr: |
+          sum by (ssh_ip) (
+            count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[1m])
+          ) > 20
+        for: 0m
+        labels:
+          severity: critical
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "Rapid-fire SSH attack from IP {{ $labels.ssh_ip }}"
+          description: "{{ $value }} failed attempts from {{ $labels.ssh_ip }} in 1 minute. Immediate blocking recommended."
+          runbook_url: "https://wiki.internal.com/security/ssh-rapid-fire"
+
+      # ==========================================================================
+      # ROOT LOGIN ALERTS
+      # ==========================================================================
+      - alert: SSHRootLoginAttempt
+        expr: |
+          sum(count_over_time({job="auth", ssh_event_type="RootLogin"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "Root login attempt detected"
+          description: "One or more root login attempts detected in the last 5 minutes. Root SSH access should be disabled."
+          runbook_url: "https://wiki.internal.com/security/root-login"
+
+      - alert: SSHSuccessfulRootLogin
+        expr: |
+          sum(count_over_time({job="auth", ssh_event_type="RootLogin", ssh_username="root"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "Successful root login detected"
+          description: "User 'root' successfully logged in via SSH. This violates security best practices."
+          runbook_url: "https://wiki.internal.com/security/successful-root-login"
+
+      # ==========================================================================
+      # UNUSUAL IP ACTIVITY
+      # ==========================================================================
+      - alert: SSHLoginFromNewIP
+        expr: |
+          (
+            count_over_time({job="auth", ssh_event_type="Accepted"}[5m]) > 0
+            and
+            count_over_time({job="auth", ssh_event_type="Accepted"}[7d]) > 0
+            and
+            (
+              topk(1, count by (ssh_ip) ({job="auth", ssh_event_type="Accepted"}[5m]))
+              !=
+              topk(1, count by (ssh_ip) ({job="auth", ssh_event_type="Accepted"}[7d]))
+            )
+          )
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "SSH login from new IP address"
+          description: "Successful SSH login from IP that hasn't been seen in the last 7 days. New IP: {{ $labels.ssh_ip }}"
+          runbook_url: "https://wiki.internal.com/security/new-ip-login"
+
+      - alert: SSHMultipleUsersFromSameIP
+        expr: |
+          count by (ssh_ip) (
+            count by (ssh_ip, ssh_username) (
+              {job="auth", ssh_event_type="Accepted"}[1h]
+            )
+          ) > 5
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "Multiple users logging in from same IP {{ $labels.ssh_ip }}"
+          description: "{{ $value }} different users have successfully logged in from {{ $labels.ssh_ip }} in the last hour."
+          runbook_url: "https://wiki.internal.com/security/multiple-users-same-ip"
+
+      # ==========================================================================
+      # ACCOUNT SECURITY
+      # ==========================================================================
+      - alert: SSHMultipleFailedForUser
+        expr: |
+          sum by (ssh_username, ssh_ip) (
+            count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[1h])
+          ) > 15
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "Multiple failed attempts for user {{ $labels.ssh_username }} from {{ $labels.ssh_ip }}"
+          description: "{{ $value }} failed authentication attempts for user '{{ $labels.ssh_username }}' from {{ $labels.ssh_ip }} in the last hour."
+          runbook_url: "https://wiki.internal.com/security/user-failures"
+
+      - alert: SSHInvalidUserAttempts
+        expr: |
+          sum(count_over_time({job="auth", ssh_event_type="Invalid"}[1h])) > 50
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "High number of invalid user attempts"
+          description: "{{ $value }} attempts to login as non-existent users in the last hour. This indicates credential spraying."
+          runbook_url: "https://wiki.internal.com/security/invalid-users"
+
+      # ==========================================================================
+      # SSH SERVICE MONITORING
+      # ==========================================================================
+      - alert: SSHServiceDown
+        expr: node_systemd_unit_state{name="ssh.service",state!="running"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          category: ssh
+          alert_type: availability
+        annotations:
+          summary: "SSH service is down or not running"
+          description: "SSH service is in {{ $labels.state }} state on {{ $labels.instance }}"
+          runbook_url: "https://wiki.internal.com/infrastructure/ssh-down"
+
+      - alert: SSHServiceRestarting
+        expr: increase(node_systemd_unit_restarts{name="ssh.service"}[1h]) > 3
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: availability
+        annotations:
+          summary: "SSH service restarting frequently"
+          description: "SSH service has restarted {{ $value }} times in the last hour"
+          runbook_url: "https://wiki.internal.com/infrastructure/ssh-restart"
+
+      # ==========================================================================
+      # SESSION ANOMALIES
+      # ==========================================================================
+      - alert: SSHShortSessions
+        expr: |
+          (
+            count by (ssh_ip, ssh_username) (
+              {job="auth", ssh_event_type="Accepted"} | line_format "{{.ssh_ip}} {{.ssh_username}}"
+            )
+            -
+            count by (ssh_ip, ssh_username) (
+              {job="auth", ssh_event_type="SessionClosed"} | line_format "{{.ssh_ip}} {{.ssh_username}}"
+            )
+          ) > 5
+        for: 1h
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: anomaly
+        annotations:
+          summary: "High number of short SSH sessions detected"
+          description: "Multiple sessions are being closed immediately after login from various IPs. This could indicate automated reconnaissance."
+          runbook_url: "https://wiki.internal.com/security/short-sessions"
+
+      - alert: SSHActivityOutsideBusinessHours
+        expr: |
+          (
+            count_over_time({job="auth", ssh_event_type="Accepted"}[1h]) > 5
+            and
+            hour() < 6 or hour() > 22
+          )
+        for: 0m
+        labels:
+          severity: info
+          category: ssh
+          alert_type: anomaly
+        annotations:
+          summary: "Unusual SSH login activity outside business hours"
+          description: "More than 5 SSH logins detected outside normal business hours (22:00-06:00)"
+          runbook_url: "https://wiki.internal.com/security/off-hours-activity"
+
+      # ==========================================================================
+      # AUTHENTICATION METHOD ALERTS
+      # ==========================================================================
+      - alert: SSHPasswordAuthDetected
+        expr: |
+          sum(count_over_time({job="auth", ssh_event_type="Accepted", ssh_auth_method="password"}[1h])) > 10
+        for: 0m
+        labels:
+          severity: warning
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "SSH password authentication in use"
+          description: "{{ $value }} successful password-based SSH logins in the last hour. Consider using key-based authentication only."
+          runbook_url: "https://wiki.internal.com/security/password-auth"
+
+      # ==========================================================================
+      # CRITICAL COMPOUND ALERTS
+      # ==========================================================================
+      - alert: SSHCriticalSecurityEvent
+        expr: |
+          (
+            # Brute force with root login attempt
+            sum(count_over_time({job="auth", ssh_event_type="RootLogin"}[5m])) > 0
+            and
+            sum by (ssh_ip) (count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])) > 5
+          )
+        for: 0m
+        labels:
+          severity: critical
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "CRITICAL: Brute force attack with root login attempts detected"
+          description: "Brute force attack detected from IP {{ $labels.ssh_ip }} with root login attempts. Immediate action required."
+          runbook_url: "https://wiki.internal.com/security/critical-ssh-event"
+
+      - alert: SSHMassiveAttack
+        expr: |
+          sum(count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])) > 100
+        for: 0m
+        labels:
+          severity: critical
+          category: ssh
+          alert_type: security
+        annotations:
+          summary: "MASSIVE SSH attack detected"
+          description: "{{ $value }} failed SSH authentication attempts in 5 minutes. This is a large-scale attack."
+          runbook_url: "https://wiki.internal.com/security/massive-attack"

@@ -21,6 +21,8 @@ alerting:
 rule_files:
   - /etc/prometheus/alerts.yml
   - /etc/prometheus/systemd-alerts.yml
+  - /etc/prometheus/ssh-alerts.yml
+  - /etc/prometheus/fail2ban-alerts.yml
 
 # Scrape configurations
 scrape_configs:

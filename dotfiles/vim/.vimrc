@@ -256,6 +256,20 @@ if has('termguicolors')
     set termguicolors
 endif
 
+" ==============================
+" Transparent Background
+" ==============================
+highlight Normal ctermbg=NONE guibg=NONE
+highlight NonText ctermbg=NONE guibg=NONE
+highlight LineNr ctermbg=NONE guibg=NONE
+highlight SignColumn ctermbg=NONE guibg=NONE
+highlight VertSplit ctermbg=NONE guibg=NONE
+highlight StatusLine ctermbg=NONE guibg=NONE
+highlight EndOfBuffer ctermbg=NONE guibg=NONE
+
+" Reapply transparency after colorscheme loads
+autocmd ColorScheme * highlight Normal ctermbg=NONE guibg=NONE
+
 " ==================================================
 " Quick commands
 " ==================================================

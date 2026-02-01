@@ -1,0 +1,254 @@
+# Promtail Configuration
+# Ships logs to Loki from host and containers
+# SSH authentication monitoring enhanced
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  # Persistent positions file - survives container restarts
+  # Mounted to /srv/data/observability/promtail on host
+  filename: /var/promtail/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ==========================================================================
+  # SYSTEM LOGS
+  # ==========================================================================
+
+  # Syslog
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          host: homelab
+          __path__: /var/log/syslog
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\w+)\s+(?P<process>[\w\-\[\]]+):\s+(?P<message>.*)$'
+      - labels:
+          hostname:
+          process:
+      - timestamp:
+          source: timestamp
+          format: 'Jan _2 15:04:05'
+
+  # Auth log - ENHANCED FOR SSH MONITORING
+  - job_name: auth
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth
+          host: homelab
+          __path__: /var/log/auth.log
+    pipeline_stages:
+      # Basic log parsing
+      - regex:
+          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\w+)\s+(?P<process>[\w\-\[\]]+):\s+(?P<message>.*)$'
+      - labels:
+          hostname:
+          process:
+      - timestamp:
+          source: timestamp
+          format: 'Jan _2 15:04:05'
+
+      # ==========================================================================
+      # SSH EVENT PARSING
+      # ==========================================================================
+
+      # Pattern 1: Successful SSH login
+      # Example: Accepted password for user from 192.168.1.100 port 22 ssh2
+      # Example: Accepted publickey for user from 192.168.1.100 port 22 ssh2
+      - regex:
+          expression: 'Accepted (?P<ssh_auth_method>password|publickey) for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_auth_method:
+          ssh_username:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 2: Failed password authentication
+      # Example: Failed password for user from 192.168.1.100 port 22 ssh2
+      - regex:
+          expression: 'Failed password for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 3: Failed publickey authentication
+      # Example: Failed publickey for user from 192.168.1.100 port 22 ssh2
+      - regex:
+          expression: 'Failed publickey for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_auth_method:
+          ssh_username:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 4: Invalid user attempts
+      # Example: Invalid user test from 192.168.1.100 port 22
+      - regex:
+          expression: 'Invalid user (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 5: User not in allow list
+      # Example: User admin not allowed because not listed in AllowUsers
+      - regex:
+          expression: 'User (?P<ssh_username>\w+) not allowed because not listed'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+
+      # Pattern 6: PAM authentication failure
+      # Example: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=192.168.1.100 user=test
+      - regex:
+          expression: 'pam_unix\(sshd:auth\): authentication failure.*rhost=(?P<ssh_ip>[\d\.]+).*user=(?P<ssh_username>\w+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+          ssh_ip:
+
+      # Pattern 7: Root login detection
+      # Example: root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/bin/bash
+      # Example: session opened for user root
+      - regex:
+          expression: 'session opened for user (?P<ssh_username>root)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+
+      # Pattern 8: Root login via sudo
+      # Example: root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/bin/bash
+      - regex:
+          expression: '^\s*root\s*:.*USER=root'
+          source: message
+      - labels:
+          ssh_event_type:
+
+      # Pattern 9: Disconnected sessions
+      # Example: Disconnected from 192.168.1.100 port 22
+      - regex:
+          expression: 'Disconnected from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 10: Connection closed
+      # Example: Connection closed by 192.168.1.100 port 22
+      - regex:
+          expression: 'Connection closed by (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 11: Maximum authentication attempts exceeded
+      # Example: PAM: 50 authentication failures; logname= uid=0 euid=0 tty=ssh ruser= rhost=192.168.1.100 user=root
+      - regex:
+          expression: 'PAM: \d+ authentication failures.*rhost=(?P<ssh_ip>[\d\.]+).*user=(?P<ssh_username>\w+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+          ssh_ip:
+
+      # Pattern 12: Postponed authentication
+      # Example: Postponed keyboard-interactive for user from 192.168.1.100 port 22 ssh2
+      - regex:
+          expression: 'Postponed keyboard-interactive for (?P<ssh_username>\w+) from (?P<ssh_ip>[\d\.]+) port (?P<ssh_port>\d+) ssh2'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_auth_method:
+          ssh_username:
+          ssh_ip:
+          ssh_port:
+
+      # Pattern 13: Starting SSH session
+      # Example: pam_unix(sshd:session): session opened for user user by (uid=0)
+      - regex:
+          expression: 'pam_unix\(sshd:session\): session opened for user (?P<ssh_username>\w+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+
+      # Pattern 14: Closing SSH session
+      # Example: pam_unix(sshd:session): session closed for user user
+      - regex:
+          expression: 'pam_unix\(sshd:session\): session closed for user (?P<ssh_username>\w+)'
+          source: message
+      - labels:
+          ssh_event_type:
+          ssh_username:
+
+      # Default ssh_event_type if not set
+      - static_labels:
+          ssh_event_type: "OtherAuth"
+
+  # Kernel log
+  - job_name: kernel
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: kernel
+          host: homelab
+          __path__: /var/log/kern.log
+
+  # ==========================================================================
+  # DOCKER CONTAINER LOGS
+  # ==========================================================================
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: homelab
+          __path__: /var/lib/docker/containers/*/*-json.log
+    pipeline_stages:
+      # Parse Docker JSON log format
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            time: time
+      - output:
+          source: output
+      - labels:
+          stream:
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+
+      # Extract container name from path
+      - regex:
+          source: filename
+          expression: '/var/lib/docker/containers/(?P<container_id>[^/]+)/.*'
+      - labels:
+          container_id:

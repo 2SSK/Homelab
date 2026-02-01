@@ -45,6 +45,8 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - ./prometheus/systemd-alerts.yml:/etc/prometheus/systemd-alerts.yml:ro
+      - ./prometheus/ssh-alerts.yml:/etc/prometheus/ssh-alerts.yml:ro
+      - ./prometheus/fail2ban-alerts.yml:/etc/prometheus/fail2ban-alerts.yml:ro
       - /srv/data/observability/prometheus:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
