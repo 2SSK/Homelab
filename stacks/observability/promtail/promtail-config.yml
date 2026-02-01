@@ -304,7 +304,7 @@ scrape_configs:
       
       # Pattern 11: Jail status
       - regex:
-          expression: 'Jail \'(?P<fail2ban_jail>[\w\-]+)\' (started|stopped|reloaded)'
+          expression: "Jail '(?P<fail2ban_jail>[\\w\\-]+)' (started|stopped|reloaded)"
           source: message
       - labels:
           fail2ban_jail:

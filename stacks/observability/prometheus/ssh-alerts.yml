@@ -83,49 +83,6 @@ groups:
           runbook_url: "https://wiki.internal.com/security/successful-root-login"
 
       # ==========================================================================
-      # UNUSUAL IP ACTIVITY
-      # ==========================================================================
-      - alert: SSHLoginFromNewIP
-        expr: |
-          (
-            count_over_time({job="auth", ssh_event_type="Accepted"}[5m]) > 0
-            and
-            count_over_time({job="auth", ssh_event_type="Accepted"}[7d]) > 0
-            and
-            (
-              topk(1, count by (ssh_ip) ({job="auth", ssh_event_type="Accepted"}[5m]))
-              !=
-              topk(1, count by (ssh_ip) ({job="auth", ssh_event_type="Accepted"}[7d]))
-            )
-          )
-        for: 0m
-        labels:
-          severity: warning
-          category: ssh
-          alert_type: security
-        annotations:
-          summary: "SSH login from new IP address"
-          description: "Successful SSH login from IP that hasn't been seen in the last 7 days. New IP: {{ $labels.ssh_ip }}"
-          runbook_url: "https://wiki.internal.com/security/new-ip-login"
-
-      - alert: SSHMultipleUsersFromSameIP
-        expr: |
-          count by (ssh_ip) (
-            count by (ssh_ip, ssh_username) (
-              {job="auth", ssh_event_type="Accepted"}[1h]
-            )
-          ) > 5
-        for: 0m
-        labels:
-          severity: warning
-          category: ssh
-          alert_type: security
-        annotations:
-          summary: "Multiple users logging in from same IP {{ $labels.ssh_ip }}"
-          description: "{{ $value }} different users have successfully logged in from {{ $labels.ssh_ip }} in the last hour."
-          runbook_url: "https://wiki.internal.com/security/multiple-users-same-ip"
-
-      # ==========================================================================
       # ACCOUNT SECURITY
       # ==========================================================================
       - alert: SSHMultipleFailedForUser
@@ -186,26 +143,29 @@ groups:
       # ==========================================================================
       # SESSION ANOMALIES
       # ==========================================================================
-      - alert: SSHShortSessions
-        expr: |
-          (
-            count by (ssh_ip, ssh_username) (
-              {job="auth", ssh_event_type="Accepted"} | line_format "{{.ssh_ip}} {{.ssh_username}}"
-            )
-            -
-            count by (ssh_ip, ssh_username) (
-              {job="auth", ssh_event_type="SessionClosed"} | line_format "{{.ssh_ip}} {{.ssh_username}}"
-            )
-          ) > 5
-        for: 1h
-        labels:
-          severity: warning
-          category: ssh
-          alert_type: anomaly
-        annotations:
-          summary: "High number of short SSH sessions detected"
-          description: "Multiple sessions are being closed immediately after login from various IPs. This could indicate automated reconnaissance."
-          runbook_url: "https://wiki.internal.com/security/short-sessions"
+      # NOTE: SSHShortSessions rule uses LogQL and should be implemented in Grafana/Loki
+      # It cannot be used as a Prometheus alert rule
+
+      # - alert: SSHShortSessions
+      #   expr: |
+      #     (
+      #       count by (ssh_ip, ssh_username) (
+      #         {job="auth", ssh_event_type="Accepted"} | line_format "{{.ssh_ip}} {{.ssh_username}}"
+      #       )
+      #       -
+      #       count by (ssh_ip, ssh_username) (
+      #         {job="auth", ssh_event_type="SessionClosed"} | line_format "{{.ssh_ip}} {{.ssh_username}}"
+      #       )
+      #     ) > 5
+      #   for: 1h
+      #   labels:
+      #     severity: warning
+      #     category: ssh
+      #     alert_type: anomaly
+      #   annotations:
+      #     summary: "High number of short SSH sessions detected"
+      #     description: "Multiple sessions are being closed immediately after login from various IPs. This could indicate automated reconnaissance."
+      #     runbook_url: "https://wiki.internal.com/security/short-sessions"
 
       - alert: SSHActivityOutsideBusinessHours
         expr: |
