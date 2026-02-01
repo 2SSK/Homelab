@@ -430,18 +430,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_systemd_unit_state{name=\"ssh.service\",state=\"active\"}",
-          "legendFormat": "SSH",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "expr": "node_systemd_unit_state{name=\"docker.service\",state=\"active\"}",
           "legendFormat": "Docker",
-          "refId": "B"
+          "refId": "A"
         },
         {
           "datasource": {
@@ -450,7 +441,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"containerd.service\",state=\"active\"}",
           "legendFormat": "Containerd",
-          "refId": "C"
+          "refId": "B"
         },
         {
           "datasource": {
@@ -459,7 +450,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"systemd-journald.service\",state=\"active\"}",
           "legendFormat": "Journald",
-          "refId": "D"
+          "refId": "C"
         },
         {
           "datasource": {
@@ -468,7 +459,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"systemd-networkd.service\",state=\"active\"}",
           "legendFormat": "Network",
-          "refId": "E"
+          "refId": "D"
         },
         {
           "datasource": {
@@ -477,7 +468,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"systemd-resolved.service\",state=\"active\"}",
           "legendFormat": "DNS Resolver",
-          "refId": "F"
+          "refId": "E"
         },
         {
           "datasource": {
@@ -486,7 +477,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"systemd-timesyncd.service\",state=\"active\"}",
           "legendFormat": "Time Sync",
-          "refId": "G"
+          "refId": "F"
         },
         {
           "datasource": {
@@ -495,7 +486,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"systemd-logind.service\",state=\"active\"}",
           "legendFormat": "Login",
-          "refId": "H"
+          "refId": "G"
         }
       ],
       "title": "Core System Services",
@@ -573,18 +564,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_systemd_unit_state{name=\"fail2ban.service\",state=\"active\"}",
-          "legendFormat": "Fail2ban",
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
           "expr": "node_systemd_unit_state{name=\"ufw.service\",state=\"active\"}",
           "legendFormat": "UFW Firewall",
-          "refId": "B"
+          "refId": "A"
         },
         {
           "datasource": {
@@ -593,7 +575,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"nftables.service\",state=\"active\"}",
           "legendFormat": "NFTables",
-          "refId": "C"
+          "refId": "B"
         },
         {
           "datasource": {
@@ -602,7 +584,7 @@
           },
           "expr": "node_systemd_unit_state{name=\"apparmor.service\",state=\"active\"}",
           "legendFormat": "AppArmor",
-          "refId": "D"
+          "refId": "C"
         }
       ],
       "title": "Security Services",
