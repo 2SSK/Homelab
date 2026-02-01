@@ -1,0 +1,51 @@
+# Systemd Service Alert Rules
+# Monitor all systemd services for failures, inactive states, and frequent restarts
+
+groups:
+  - name: systemd_services
+    interval: 30s
+    rules:
+      # Alert on failed systemd services
+      - alert: SystemdServiceFailed
+        expr: node_systemd_unit_state{state="failed"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          category: systemd
+        annotations:
+          summary: "Systemd service {{ $labels.name }} has failed"
+          description: "Service {{ $labels.name }} on {{ $labels.instance }} is in failed state for > 2 minutes."
+
+      # Alert on critical services that are inactive
+      - alert: CriticalServiceInactive
+        expr: |
+          node_systemd_unit_state{name=~"(ssh|docker|networking|cron|sshd|sshd|systemd-journald|systemd-logind)",state!="running"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          category: systemd
+        annotations:
+          summary: "Critical service {{ $labels.name }} is not running"
+          description: "Service {{ $labels.name }} is in {{ $labels.state }} state on {{ $labels.instance }}."
+
+      # Alert on services restarting frequently
+      - alert: ServiceRestartingFrequently
+        expr: increase(node_systemd_unit_state{name=~".+",state!="running"}[1h]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: systemd
+        annotations:
+          summary: "Service {{ $labels.name }} restarting frequently"
+          description: "Service {{ $labels.name }} has restarted more than 5 times in the last hour."
+
+      # Alert on high service restart count
+      - alert: HighServiceRestartCount
+        expr: node_systemd_unit_restarts > 10
+        for: 10m
+        labels:
+          severity: warning
+          category: systemd
+        annotations:
+          summary: "High restart count for service {{ $labels.name }}"
+          description: "Service {{ $labels.name }} has restarted {{ $value }} times."
