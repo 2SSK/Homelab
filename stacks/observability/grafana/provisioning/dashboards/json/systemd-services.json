@@ -4,17 +4,32 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": [],
+      "title": "Overview",
+      "type": "row"
+    },
+    {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "green", "index": 0, "text": "All OK" }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -26,8 +41,90 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "count(node_systemd_unit_state{state=\"failed\"} == 1) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed Services",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 90 },
+              { "color": "green", "value": 98 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 3,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "(count(node_systemd_unit_state{state=\"active\"} == 1) / count(node_systemd_unit_state) * 5) * 100",
+          "refId": "A"
+        }
+      ],
+      "title": "Services Active %",
+      "type": "gauge"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 9,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
@@ -44,11 +141,50 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(node_systemd_unit_state{state=\"failed\"} == 1)",
+          "expr": "count(node_systemd_unit_state{state=\"active\"} == 1)",
           "refId": "A"
         }
       ],
-      "title": "Failed Services",
+      "title": "Active Services",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 10,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "count(node_systemd_unit_state{state=\"inactive\"} == 1)",
+          "refId": "A"
+        }
+      ],
+      "title": "Inactive Services",
       "type": "stat"
     },
     {
@@ -62,18 +198,29 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 4, "y": 0 },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 1 },
       "id": 2,
       "options": {
-        "legend": { "displayMode": "table", "placement": "right" },
-        "pieType": "pie",
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value"]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
         "tooltip": { "mode": "single", "sort": "none" }
       },
       "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count by (state) (node_systemd_unit_state{state=~\".+\"})",
+          "expr": "count by (state) (node_systemd_unit_state == 1)",
+          "legendFormat": "{{state}}",
           "refId": "A"
         }
       ],
@@ -81,78 +228,24 @@
       "type": "piechart"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "green", "value": 100 }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
-      "id": 3,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "10.2.3",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "(count(node_systemd_unit_state{state=\"running\"}) / count(node_systemd_unit_state{state=~\".+\"})) * 100",
-          "refId": "A"
-        }
-      ],
-      "title": "Services Running %",
-      "type": "gauge"
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
+      "id": 101,
+      "panels": [],
+      "title": "Critical Infrastructure Services",
+      "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Core services that must be running for system operation",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "align": "auto",
-            "cellOptions": { "type": "auto" },
-            "inspect": false
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [
             {
               "options": {
-                "from": 0,
-                "result": { "color": "red", "index": 1, "text": "FAILED" },
-                "to": 0
-              },
-              "type": "value"
-            },
-            {
-              "options": {
-                "from": 1,
-                "result": { "color": "yellow", "index": 2, "text": "INACTIVE" },
-                "to": 1
-              },
-              "type": "value"
-            },
-            {
-              "options": {
-                "from": 2,
-                "result": { "color": "green", "index": 3, "text": "RUNNING" },
-                "to": 2
+                "0": { "color": "red", "index": 1, "text": "DOWN" },
+                "1": { "color": "green", "index": 0, "text": "UP" }
               },
               "type": "value"
             }
@@ -160,27 +253,280 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null }
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
             ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 9 },
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"ssh.service\",state=\"active\"}",
+          "legendFormat": "SSH",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"docker.service\",state=\"active\"}",
+          "legendFormat": "Docker",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"containerd.service\",state=\"active\"}",
+          "legendFormat": "Containerd",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"systemd-journald.service\",state=\"active\"}",
+          "legendFormat": "Journald",
+          "refId": "D"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"systemd-networkd.service\",state=\"active\"}",
+          "legendFormat": "Network",
+          "refId": "E"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"systemd-resolved.service\",state=\"active\"}",
+          "legendFormat": "DNS Resolver",
+          "refId": "F"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"systemd-timesyncd.service\",state=\"active\"}",
+          "legendFormat": "Time Sync",
+          "refId": "G"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"systemd-logind.service\",state=\"active\"}",
+          "legendFormat": "Login",
+          "refId": "H"
+        }
+      ],
+      "title": "Core System Services",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Security-related services",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "red", "index": 1, "text": "DOWN" },
+                "1": { "color": "green", "index": 0, "text": "UP" }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 14 },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"fail2ban.service\",state=\"active\"}",
+          "legendFormat": "Fail2ban",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"ufw.service\",state=\"active\"}",
+          "legendFormat": "UFW Firewall",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"nftables.service\",state=\"active\"}",
+          "legendFormat": "NFTables",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"apparmor.service\",state=\"active\"}",
+          "legendFormat": "AppArmor",
+          "refId": "D"
+        }
+      ],
+      "title": "Security Services",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Application and infrastructure services",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "red", "index": 1, "text": "DOWN" },
+                "1": { "color": "green", "index": 0, "text": "UP" }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 14 },
+      "id": 12,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"tailscaled.service\",state=\"active\"}",
+          "legendFormat": "Tailscale VPN",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"observability.service\",state=\"active\"}",
+          "legendFormat": "Observability",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"unattended-upgrades.service\",state=\"active\"}",
+          "legendFormat": "Auto Updates",
+          "refId": "C"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{name=\"thermald.service\",state=\"active\"}",
+          "legendFormat": "Thermal Mgmt",
+          "refId": "D"
+        }
+      ],
+      "title": "Application Services",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "id": 102,
+      "panels": [],
+      "title": "Failed & Problem Services",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Services currently in failed state",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "left",
+            "cellOptions": { "type": "color-text" },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }]
           }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "state" },
-            "properties": [
-              { "id": "custom.width", "value": 120 }
-            ]
+            "matcher": { "id": "byName", "options": "name" },
+            "properties": [{ "id": "custom.width", "value": 350 }]
           },
           {
-            "matcher": { "id": "byName", "options": "name" },
-            "properties": [
-              { "id": "custom.width", "value": 300 }
-            ]
+            "matcher": { "id": "byName", "options": "type" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "__name__" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "instance" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "job" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
           }
         ]
       },
-      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 4 },
-      "id": 4,
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 19 },
+      "id": 13,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -195,13 +541,98 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "node_systemd_unit_state{state=~\".+\"}",
+          "expr": "node_systemd_unit_state{state=\"failed\"} == 1",
           "format": "table",
+          "instant": true,
           "refId": "A"
         }
       ],
-      "title": "All Systemd Services Status",
+      "title": "Failed Services",
       "type": "table"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Services in activating state (may indicate startup issues)",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "left",
+            "cellOptions": { "type": "color-text" },
+            "inspect": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "yellow", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "name" },
+            "properties": [{ "id": "custom.width", "value": 350 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "type" },
+            "properties": [{ "id": "custom.width", "value": 100 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Value" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Time" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "__name__" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "instance" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "job" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "state" },
+            "properties": [{ "id": "custom.hidden", "value": true }]
+          }
+        ]
+      },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 19 },
+      "id": 14,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "10.2.3",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "node_systemd_unit_state{state=\"activating\"} == 1",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Activating Services",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 103,
+      "panels": [],
+      "title": "Service History",
+      "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -214,33 +645,83 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "gradientMode": "none",
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
             "hideFrom": { "tooltip": false, "viz": false, "legend": false },
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": { "type": "linear" },
-            "showPoints": "auto",
-            "spanNulls": true
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "failed" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "red", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "active" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "green", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "inactive" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "blue", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "activating" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "yellow", "mode": "fixed" }
+              }
+            ]
           }
-        }
+        ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
       "id": 5,
       "options": {
-        "legend": { "displayMode": "table", "placement": "right" },
-        "tooltip": { "mode": "single", "sort": "none" }
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "topk(10, increase(node_systemd_unit_restarts[24h]))",
+          "expr": "count by (state) (node_systemd_unit_state == 1)",
+          "legendFormat": "{{state}}",
           "refId": "A"
         }
       ],
-      "title": "Services with Most Restarts (24h)",
+      "title": "Service States Over Time",
       "type": "timeseries"
     },
     {
@@ -268,184 +749,165 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null }
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
             ]
           }
         }
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 26 },
       "id": 6,
       "options": {
-        "legend": { "displayMode": "table", "placement": "right" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
         "tooltip": { "mode": "multi", "sort": "none" }
       },
       "pluginVersion": "10.2.3",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (name) (rate(node_systemd_unit_state{state=\"failed\"}[5m]))",
+          "expr": "count(node_systemd_unit_state{state=\"failed\"} == 1) or vector(0)",
+          "legendFormat": "Failed Count",
           "refId": "A"
         }
       ],
-      "title": "Failed Services Rate",
+      "title": "Failed Services Over Time",
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [
-            {
-              "options": {
-                "0": { "color": "red", "index": 1, "text": "FAILED" },
-                "1": { "color": "green", "index": 0, "text": "RUNNING" }
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "id": 104,
+      "panels": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "description": "Complete list of all systemd services and their current state",
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "custom": {
+                "align": "left",
+                "cellOptions": { "type": "auto" },
+                "inspect": false,
+                "filterable": true
               },
-              "type": "value"
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "name" },
+                "properties": [{ "id": "custom.width", "value": 350 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "state" },
+                "properties": [
+                  { "id": "custom.width", "value": 100 },
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "options": {
+                          "active": { "color": "green", "index": 0 }
+                        },
+                        "type": "value"
+                      },
+                      {
+                        "options": {
+                          "inactive": { "color": "blue", "index": 1 }
+                        },
+                        "type": "value"
+                      },
+                      {
+                        "options": { "failed": { "color": "red", "index": 2 } },
+                        "type": "value"
+                      },
+                      {
+                        "options": {
+                          "activating": { "color": "yellow", "index": 3 }
+                        },
+                        "type": "value"
+                      },
+                      {
+                        "options": {
+                          "deactivating": { "color": "orange", "index": 4 }
+                        },
+                        "type": "value"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": { "type": "color-text" }
+                  }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "type" },
+                "properties": [{ "id": "custom.width", "value": 100 }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Value" },
+                "properties": [{ "id": "custom.hidden", "value": true }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Time" },
+                "properties": [{ "id": "custom.hidden", "value": true }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "__name__" },
+                "properties": [{ "id": "custom.hidden", "value": true }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "instance" },
+                "properties": [{ "id": "custom.hidden", "value": true }]
+              },
+              {
+                "matcher": { "id": "byName", "options": "job" },
+                "properties": [{ "id": "custom.hidden", "value": true }]
+              }
+            ]
+          },
+          "gridPos": { "h": 15, "w": 24, "x": 0, "y": 35 },
+          "id": 4,
+          "options": {
+            "cellHeight": "sm",
+            "footer": {
+              "countRows": false,
+              "fields": "",
+              "reducer": ["sum"],
+              "show": false
+            },
+            "showHeader": true,
+            "sortBy": [{ "desc": false, "displayName": "state" }]
+          },
+          "pluginVersion": "10.2.3",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "node_systemd_unit_state == 1",
+              "format": "table",
+              "instant": true,
+              "refId": "A"
             }
           ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 1 }
-            ]
-          }
-        }
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
-      "id": 7,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value"
-      },
-      "pluginVersion": "10.2.3",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "node_systemd_unit_state{name=\"ssh.service\"}",
-          "legendFormat": "SSH",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "node_systemd_unit_state{name=\"docker.service\"}",
-          "legendFormat": "Docker",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "node_systemd_unit_state{name=\"networking.service\"}",
-          "legendFormat": "Networking",
-          "refId": "C"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "node_systemd_unit_state{name=\"cron.service\"}",
-          "legendFormat": "Cron",
-          "refId": "D"
+          "title": "All Systemd Services",
+          "type": "table"
         }
       ],
-      "title": "Critical Services Status",
-      "type": "stat"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 10 }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 24 },
-      "id": 8,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "10.2.3",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(node_systemd_unit_restarts)",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Restarts",
-      "type": "gauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "red", "value": 100 }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 24 },
-      "id": 9,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.2.3",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "count(node_systemd_unit_state{state=~\".+\"})",
-          "refId": "A"
-        }
-      ],
-      "title": "Total Services",
-      "type": "stat"
+      "title": "All Services (Click to Expand)",
+      "type": "row"
     }
   ],
   "refresh": "30s",
-  "schemaVersion": 37,
+  "schemaVersion": 38,
   "style": "dark",
-  "tags": ["systemd", "services", "linux"],
+  "tags": ["systemd", "services", "linux", "production"],
   "templating": {
     "list": []
   },
@@ -457,6 +919,6 @@
   "timezone": "",
   "title": "Systemd Services",
   "uid": "systemd-services",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
