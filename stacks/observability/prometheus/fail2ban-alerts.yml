@@ -190,14 +190,10 @@ groups:
         expr: |
           (
             # High SSH failure rate
-            sum(count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])) > 50
+            sum(rate({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])) * 300 > 50
             and
             # High fail2ban ban rate
-            sum(count_over_time({job="fail2ban", fail2ban_event="Ban"}[5m])) > 10
-            and
-            # Same IPs involved
-            topk(5, count by (ssh_ip) ({job="auth", ssh_event_type=~"Failed|Invalid"}[5m]))
-            == topk(5, count by (fail2ban_ip) ({job="fail2ban", fail2ban_event="Ban"}[5m]))
+            sum(rate({job="fail2ban", fail2ban_event="Ban"}[5m])) * 300 > 10
           )
         for: 0m
         labels:
