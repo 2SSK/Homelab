@@ -4,9 +4,9 @@
 # Production-grade deployment of Prometheus, Grafana, Loki, and alerting
 #
 # Directory Layout:
-#   /opt/Homelab/stacks/observability/  - Source configs (git repo)
-#   /srv/docker/observability/          - Runtime (compose.yaml + .env)
-#   /srv/data/observability/            - Persistent data volumes
+#   <repo>/stacks/observability/      - Source configs (git repo, auto-detected)
+#   /srv/docker/observability/        - Runtime (compose.yaml + .env)
+#   /srv/data/observability/          - Persistent data volumes
 #
 
 set -euo pipefail
@@ -15,8 +15,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/../libs/utils.sh"
 
-# Configuration
-readonly SOURCE_DIR="/opt/Homelab/stacks/observability"
+# Configuration - Dynamic path detection
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+readonly SOURCE_DIR="${REPO_ROOT}/stacks/observability"
 readonly RUNTIME_DIR="/srv/docker/observability"
 readonly DATA_DIR="/srv/data/observability"
 readonly SYSTEMD_UNIT="/etc/systemd/system/observability.service"
@@ -61,6 +62,36 @@ check_env_file() {
     log_info "Environment file validated"
 }
 
+validate_prometheus_config() {
+    log_info "Validating Prometheus configuration..."
+    
+    # Check if config files exist
+    if [[ ! -f "${SOURCE_DIR}/prometheus/prometheus.yml" ]]; then
+        log_error "Prometheus config not found: ${SOURCE_DIR}/prometheus/prometheus.yml"
+        return 1
+    fi
+    
+    # Validate using promtool in container
+    log_info "Validating alert rules syntax..."
+    if ! docker run --rm \
+        -v "${SOURCE_DIR}/prometheus:/prometheus:ro" \
+        --entrypoint /bin/promtool \
+        prom/prometheus:v2.48.1 \
+        check rules /prometheus/alerts.yml \
+                    /prometheus/systemd-alerts.yml \
+                    /prometheus/ssh-alerts.yml \
+                    /prometheus/fail2ban-alerts.yml 2>&1 | grep -q "SUCCESS"; then
+        log_error "Prometheus alert rules validation failed"
+        log_info "Run promtool manually to see detailed errors:"
+        log_info "  docker run --rm -v ${SOURCE_DIR}/prometheus:/prometheus:ro \\"
+        log_info "    --entrypoint /bin/promtool prom/prometheus:v2.48.1 \\"
+        log_info "    check rules /prometheus/*.yml"
+        return 1
+    fi
+    
+    log_success "Prometheus configuration is valid"
+}
+
 # =============================================================================
 # DIRECTORY SETUP
 # =============================================================================
@@ -68,7 +99,14 @@ check_env_file() {
 create_directories() {
     log_info "Creating production directory structure..."
     
-    # Runtime directory
+    # Create parent directories first with proper ownership
+    sudo mkdir -p /srv/docker
+    sudo chown "${USER}:${USER}" /srv/docker
+    
+    sudo mkdir -p /srv/data
+    sudo chown "${USER}:${USER}" /srv/data
+    
+    # Runtime directory (owned by user for compose operations)
     sudo mkdir -p "${RUNTIME_DIR}"
     sudo chown "${USER}:${USER}" "${RUNTIME_DIR}"
     
@@ -292,14 +330,53 @@ show_status() {
 
 stop_stack() {
     log_info "Stopping observability stack..."
+    
+    # Check if service exists
+    if ! systemctl list-unit-files observability.service &>/dev/null; then
+        log_warning "Observability service not installed"
+        return 1
+    fi
+    
     sudo systemctl stop observability.service
     log_success "Stack stopped"
 }
 
 restart_stack() {
     log_info "Restarting observability stack..."
+    
+    # Check if service exists
+    if ! systemctl list-unit-files observability.service &>/dev/null; then
+        log_error "Observability service not installed. Run: homelab observability install"
+        return 1
+    fi
+    
+    # Check if runtime directory exists
+    if [[ ! -d "${RUNTIME_DIR}" ]]; then
+        log_error "Runtime directory not found: ${RUNTIME_DIR}"
+        log_info "Run: homelab observability install"
+        return 1
+    fi
+    
+    # Validate configuration before restart
+    log_info "Validating configuration before restart..."
+    if ! validate_prometheus_config; then
+        log_error "Configuration validation failed. Fix errors before restarting."
+        return 1
+    fi
+    
     sudo systemctl restart observability.service
-    log_success "Stack restarted"
+    
+    # Wait a moment for services to start
+    sleep 3
+    
+    # Check if restart was successful
+    if systemctl is-active --quiet observability.service; then
+        log_success "Stack restarted successfully"
+        show_status
+    else
+        log_error "Stack failed to start. Check logs with: journalctl -u observability.service -n 50"
+        return 1
+    fi
 }
 
 show_logs() {
@@ -356,6 +433,9 @@ install_observability() {
         log_info "  homelab observability install"
         return 1
     fi
+    
+    # Validate Prometheus configuration before deployment
+    validate_prometheus_config || return 1
     
     generate_alertmanager_config
     install_systemd_unit

@@ -99,9 +99,18 @@ case $command in
         esac
         ;;
     observability)
+        # Validate that observability script exists
+        if [[ ! -f "$CLI_DIR/install/observability.sh" ]]; then
+            echo "Error: observability script not found at $CLI_DIR/install/observability.sh"
+            exit 1
+        fi
+        
         # Pass all remaining args to observability script
         shift
-        bash "$CLI_DIR/install/observability.sh" "$@"
+        if ! bash "$CLI_DIR/install/observability.sh" "$@"; then
+            echo "Error: observability command failed"
+            exit 1
+        fi
         ;;
     maintain)
         case $subcommand in

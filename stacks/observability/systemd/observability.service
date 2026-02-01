@@ -28,7 +28,7 @@ SyslogIdentifier=observability
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/srv/data/observability
+ReadWritePaths=/srv/data/observability /srv/docker/observability
 PrivateTmp=true
 
 # Restart policy handled by Docker, not systemd
