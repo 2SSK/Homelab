@@ -1,0 +1,117 @@
+# File Integrity Monitoring Alert Rules
+# Monitor critical system files using AIDE
+
+groups:
+  - name: file_integrity
+    interval: 60s
+    rules:
+      # ==========================================================================
+      # AIDE STATUS
+      # ==========================================================================
+
+      - alert: AIDEChangesDetected
+        expr: aide_check_status > 0
+        for: 0m
+        labels:
+          severity: high
+          category: file_integrity
+          alert_type: security
+        annotations:
+          summary: "AIDE detected file system changes"
+          description: "AIDE integrity check failed. {{ aide_changed_files }} changed, {{ aide_added_files }} added, {{ aide_removed_files }} removed."
+          runbook_url: "https://wiki.internal.com/security/aide-changes"
+
+      - alert: CriticalFileModified
+        expr: aide_changed_files > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: file_integrity
+          alert_type: security
+        annotations:
+          summary: "Critical system files modified"
+          description: "AIDE detected {{ $value }} modified files. Check /var/log/aide/aide.log for details."
+          runbook_url: "https://wiki.internal.com/security/file-modified"
+
+      - alert: NewFilesAdded
+        expr: aide_added_files > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: file_integrity
+          alert_type: monitoring
+        annotations:
+          summary: "New files added to monitored directories"
+          description: "AIDE detected {{ $value }} new files in monitored directories."
+          runbook_url: "https://wiki.internal.com/security/files-added"
+
+      - alert: FilesRemoved
+        expr: aide_removed_files > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: file_integrity
+          alert_type: monitoring
+        annotations:
+          summary: "Files removed from monitored directories"
+          description: "AIDE detected {{ $value }} files removed from monitored directories."
+          runbook_url: "https://wiki.internal.com/security/files-removed"
+
+      # ==========================================================================
+      # AIDE CHECK FAILURES
+      # ==========================================================================
+
+      - alert: AIDECheckFailed
+        expr: absent_over_time(aide_last_check_timestamp[30m])
+        for: 5m
+        labels:
+          severity: warning
+          category: file_integrity
+          alert_type: monitoring
+        annotations:
+          summary: "AIDE check not running"
+          description: "No AIDE check has run in the last 30 minutes. Check cron job and AIDE service."
+          runbook_url: "https://wiki.internal.com/security/aide-not-running"
+
+      # ==========================================================================
+      # SPECIFIC FILE MODIFICATIONS (via Loki)
+      # ==========================================================================
+
+      - alert: PasswdFileModified
+        expr: |
+          count_over_time({job="audit", audit_key="user_modification", audit_file_path="/etc/passwd"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: file_integrity
+          alert_type: security
+        annotations:
+          summary: "/etc/passwd file modified"
+          description: "The /etc/passwd file was modified. User: {{ $labels.audit_uid }}. Immediate investigation required."
+          runbook_url: "https://wiki.internal.com/security/passwd-modified"
+
+      - alert: ShadowFileModified
+        expr: |
+          count_over_time({job="audit", audit_key="shadow_modification", audit_file_path="/etc/shadow"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: file_integrity
+          alert_type: security
+        annotations:
+          summary: "/etc/shadow file modified"
+          description: "The /etc/shadow password file was modified. User: {{ $labels.audit_uid }}. CRITICAL."
+          runbook_url: "https://wiki.internal.com/security/shadow-modified"
+
+      - alert: SudoersModified
+        expr: |
+          count_over_time({job="syslog"} |~ "/etc/sudoers" [5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: file_integrity
+          alert_type: security
+        annotations:
+          summary: "Sudoers configuration modified"
+          description: "The /etc/sudoers or /etc/sudoers.d/ was modified. Check who made changes."
+          runbook_url: "https://wiki.internal.com/security/sudoers-modified"

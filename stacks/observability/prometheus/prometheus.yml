@@ -23,6 +23,15 @@ rule_files:
   - /etc/prometheus/systemd-alerts.yml
   - /etc/prometheus/ssh-alerts.yml
   - /etc/prometheus/fail2ban-alerts.yml
+  - /etc/prometheus/cron-alerts.yml
+  - /etc/prometheus/port-alerts.yml
+  - /etc/prometheus/docker-security-alerts.yml
+  # Phase 4: Advanced Security Monitoring
+  - /etc/prometheus/sudo-alerts.yml
+  - /etc/prometheus/file-integrity-alerts.yml
+  - /etc/prometheus/process-alerts.yml
+  - /etc/prometheus/user-management-alerts.yml
+  - /etc/prometheus/privilege-escalation-alerts.yml
 
 # Scrape configurations
 scrape_configs:

@@ -1,8 +1,33 @@
 AGENTS.md
 
+# Environment files with secrets
+.env
+*.env
+!.env.example
+
 # Runtime generated configs (should not be in git)
 stacks/observability/alertmanager/alertmanager.yml
 
 # Runtime directories (created by install script)
 /srv/docker/
 /srv/data/
+
+# Observability stack runtime data
+stacks/observability/data/grafana/*.db
+stacks/observability/data/grafana/png/
+stacks/observability/data/grafana/csv/
+stacks/observability/data/grafana/alerting/
+stacks/observability/data/loki/boltdb-shipper-active/
+stacks/observability/data/loki/boltdb-shipper-cache/
+stacks/observability/data/loki/chunks/
+stacks/observability/data/loki/wal/
+stacks/observability/data/prometheus/chunks_head/
+stacks/observability/data/prometheus/wal/
+stacks/observability/data/prometheus/queries.active
+stacks/observability/data/promtail/positions.yaml
+stacks/observability/promtail/*.backup*
+
+# General runtime data patterns
+*.db-shm
+*.db-wal
+*.log

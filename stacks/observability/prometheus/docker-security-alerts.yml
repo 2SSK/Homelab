@@ -1,0 +1,270 @@
+# Docker Security Alert Rules
+# Monitor container runtime for security and stability events
+
+groups:
+  - name: docker_security
+    interval: 30s
+    rules:
+      # ==========================================================================
+      # CONTAINER RESTART DETECTION
+      # ==========================================================================
+      - alert: ContainerRestartingFrequently
+        expr: |
+          increase(container_start_time_seconds{name!=""}[1h]) > 3
+        for: 0m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: stability
+        annotations:
+          summary: "Container {{ $labels.name }} restarting frequently"
+          description: "Container {{ $labels.name }} has restarted {{ $value }} times in the last hour."
+          runbook_url: "https://wiki.internal.com/docker/container-restart"
+
+      - alert: ContainerRestartLoop
+        expr: |
+          increase(container_start_time_seconds{name!=""}[15m]) > 5
+        for: 0m
+        labels:
+          severity: critical
+          category: docker
+          alert_type: stability
+        annotations:
+          summary: "Container {{ $labels.name }} in restart loop"
+          description: "Container {{ $labels.name }} has restarted {{ $value }} times in 15 minutes. Crash loop detected."
+          runbook_url: "https://wiki.internal.com/docker/restart-loop"
+
+      # ==========================================================================
+      # OOM (OUT OF MEMORY) DETECTION
+      # ==========================================================================
+      - alert: ContainerOOMKilled
+        expr: |
+          increase(container_memory_failcnt{name!=""}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: docker
+          alert_type: resource
+        annotations:
+          summary: "Container {{ $labels.name }} OOM killed"
+          description: "Container {{ $labels.name }} was killed due to out-of-memory. Increase memory limits or investigate memory leak."
+          runbook_url: "https://wiki.internal.com/docker/oom-killed"
+
+      - alert: ContainerNearOOMRisk
+        expr: |
+          (
+            container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100
+          ) > 90
+        for: 5m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: resource
+        annotations:
+          summary: "Container {{ $labels.name }} near OOM"
+          description: "Container {{ $labels.name }} is using {{ $value | printf \"%.1f\" }}% of memory limit. OOM kill risk."
+          runbook_url: "https://wiki.internal.com/docker/near-oom"
+
+      # ==========================================================================
+      # UNEXPECTED CONTAINER DETECTION
+      # ==========================================================================
+      - alert: UnexpectedContainerCount
+        expr: |
+          count(container_last_seen{name!=""}) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: security
+        annotations:
+          summary: "Unexpected number of containers running"
+          description: "{{ $value }} containers are running (expected: ≤10). Verify all containers are authorized."
+          runbook_url: "https://wiki.internal.com/security/unexpected-container"
+
+      - alert: NewContainerDetected
+        expr: |
+          (
+            count by (name) (container_last_seen{name!=""})
+            unless
+            count by (name) (container_last_seen{name!=""} offset 1h)
+          )
+        for: 5m
+        labels:
+          severity: info
+          category: docker
+          alert_type: security
+        annotations:
+          summary: "New container detected: {{ $labels.name }}"
+          description: "Container {{ $labels.name }} started within the last hour. Verify deployment is authorized."
+          runbook_url: "https://wiki.internal.com/security/new-container"
+
+      # ==========================================================================
+      # CONTAINER EXIT CODE MONITORING (via Logs)
+      # ==========================================================================
+      - alert: ContainerExitedWithError
+        expr: |
+          sum(count_over_time({job="docker", docker_event_type="container_exit", exit_code!="0"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: stability
+        annotations:
+          summary: "Container exited with non-zero exit code"
+          description: "Container exited with code {{ $labels.exit_code }}. Check logs for errors."
+          runbook_url: "https://wiki.internal.com/docker/exit-error"
+
+      # ==========================================================================
+      # DOCKER DAEMON MONITORING
+      # ==========================================================================
+      - alert: DockerDaemonDown
+        expr: up{job="cadvisor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: docker
+          alert_type: availability
+        annotations:
+          summary: "Docker daemon or cAdvisor is down"
+          description: "Cannot collect container metrics. Docker daemon may be down or cAdvisor failed."
+          runbook_url: "https://wiki.internal.com/infrastructure/docker-down"
+
+      - alert: DockerHighCPUUsage
+        expr: |
+          sum(rate(container_cpu_usage_seconds_total{name!=""}[5m])) by (name) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: resource
+        annotations:
+          summary: "Container {{ $labels.name }} high CPU usage"
+          description: "Container {{ $labels.name }} is using {{ $value | printf \"%.1f\" }}% CPU."
+          runbook_url: "https://wiki.internal.com/docker/high-cpu"
+
+      # ==========================================================================
+      # IMAGE SECURITY (via Logs)
+      # ==========================================================================
+      - alert: UnexpectedImagePull
+        expr: |
+          sum(count_over_time({job="docker", docker_event_type="image_pull"}[1h])) > 0
+        for: 0m
+        labels:
+          severity: info
+          category: docker
+          alert_type: security
+        annotations:
+          summary: "Docker image pull detected"
+          description: "Image {{ $labels.docker_image }} was pulled. Verify this action is authorized."
+          runbook_url: "https://wiki.internal.com/security/image-pull"
+
+      # ==========================================================================
+      # PERMISSION ERRORS (via Logs)
+      # ==========================================================================
+      - alert: DockerPermissionErrors
+        expr: |
+          sum(count_over_time({job="docker", docker_event_type="permission_error"}[15m])) > 5
+        for: 0m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: security
+        annotations:
+          summary: "Multiple Docker permission errors detected"
+          description: "{{ $value }} permission/access denied errors in Docker containers. Check container security settings."
+          runbook_url: "https://wiki.internal.com/docker/permission-errors"
+
+      # ==========================================================================
+      # NETWORK ANOMALIES
+      # ==========================================================================
+      - alert: ContainerHighNetworkTraffic
+        expr: |
+          sum(rate(container_network_receive_bytes_total{name!=""}[5m])) by (name) > 100000000
+        for: 5m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: anomaly
+        annotations:
+          summary: "Container {{ $labels.name }} high network traffic"
+          description: "Container {{ $labels.name }} receiving {{ $value | humanize }}B/s. Unusually high network activity."
+          runbook_url: "https://wiki.internal.com/docker/high-network"
+
+      - alert: ContainerNetworkErrors
+        expr: |
+          rate(container_network_receive_errors_total{name!=""}[5m]) + 
+          rate(container_network_transmit_errors_total{name!=""}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: network
+        annotations:
+          summary: "Container {{ $labels.name }} network errors"
+          description: "Container {{ $labels.name }} experiencing network errors ({{ $value | printf \"%.0f\" }}/sec)."
+          runbook_url: "https://wiki.internal.com/docker/network-errors"
+
+      # ==========================================================================
+      # DOCKER LOGS ANOMALIES
+      # ==========================================================================
+      - alert: DockerOOMEvents
+        expr: |
+          sum(count_over_time({job="docker", docker_event_type="oom_event"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: docker
+          alert_type: resource
+        annotations:
+          summary: "Docker OOM events detected in logs"
+          description: "{{ $value }} OOM events detected in Docker logs. Containers may be killed."
+          runbook_url: "https://wiki.internal.com/docker/oom-events"
+
+      - alert: DockerMountErrors
+        expr: |
+          sum(count_over_time({job="docker", docker_event_type="mount_error"}[15m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: docker
+          alert_type: configuration
+        annotations:
+          summary: "Docker volume mount errors detected"
+          description: "{{ $value }} volume mount errors in the last 15 minutes. Containers may not have access to required data."
+          runbook_url: "https://wiki.internal.com/docker/mount-errors"
+
+      # ==========================================================================
+      # CONTAINER LIFECYCLE MONITORING
+      # ==========================================================================
+      - alert: ContainerStoppedUnexpectedly
+        expr: |
+          (
+            container_last_seen{name!=""} offset 5m > 0
+            unless
+            container_last_seen{name!=""} > 0
+          )
+        for: 2m
+        labels:
+          severity: warning
+          category: docker
+          alert_type: availability
+        annotations:
+          summary: "Container {{ $labels.name }} stopped unexpectedly"
+          description: "Container {{ $labels.name }} was running but is now stopped."
+          runbook_url: "https://wiki.internal.com/docker/container-stopped"
+
+      # ==========================================================================
+      # DISK I/O MONITORING
+      # ==========================================================================
+      - alert: ContainerHighDiskIO
+        expr: |
+          sum(rate(container_fs_reads_bytes_total{name!=""}[5m]) + rate(container_fs_writes_bytes_total{name!=""}[5m])) by (name) > 50000000
+        for: 5m
+        labels:
+          severity: info
+          category: docker
+          alert_type: performance
+        annotations:
+          summary: "Container {{ $labels.name }} high disk I/O"
+          description: "Container {{ $labels.name }} performing {{ $value | humanize }}B/s disk I/O."
+          runbook_url: "https://wiki.internal.com/docker/high-disk-io"

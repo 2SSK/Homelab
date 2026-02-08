@@ -1,0 +1,119 @@
+# Sudo Usage Alert Rules
+# Monitor sudo command execution and detect abuse patterns
+
+groups:
+  - name: sudo_monitoring
+    interval: 30s
+    rules:
+      # ==========================================================================
+      # SUDO EXECUTION TRACKING
+      # ==========================================================================
+
+      - alert: ExcessiveSudoUsage
+        expr: |
+          sum(count_over_time({job="auth", process="sudo", sudo_result="success"} [1h])) by (sudo_user) > 50
+        for: 5m
+        labels:
+          severity: warning
+          category: sudo
+          alert_type: abuse
+        annotations:
+          summary: "Excessive sudo usage by {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} executed {{ $value }} sudo commands in the last hour. Normal usage is typically < 50/hour."
+          runbook_url: "https://wiki.internal.com/security/sudo-abuse"
+
+      - alert: SudoFailedAttempts
+        expr: |
+          sum(count_over_time({job="auth", process="sudo", sudo_result="failed"} [5m])) by (sudo_user) > 3
+        for: 0m
+        labels:
+          severity: high
+          category: sudo
+          alert_type: security
+        annotations:
+          summary: "Multiple failed sudo attempts by {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} had {{ $value }} failed sudo attempts in 5 minutes. Potential brute force or unauthorized access."
+          runbook_url: "https://wiki.internal.com/security/sudo-failures"
+
+      - alert: SudoCommandDenied
+        expr: |
+          count_over_time({job="auth", process="sudo", sudo_result="denied"} [10m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: sudo
+          alert_type: security
+        annotations:
+          summary: "Sudo command denied for {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} attempted to run a command not allowed by sudoers policy."
+          runbook_url: "https://wiki.internal.com/security/sudo-denied"
+
+      # ==========================================================================
+      # DANGEROUS SUDO COMMANDS
+      # ==========================================================================
+
+      - alert: DangerousSudoCommand
+        expr: |
+          count_over_time({job="auth", process="sudo", sudo_result="success"} |~ "COMMAND=.*(rm -rf|mkfs|dd if=|fdisk|parted|:/bin/bash|:/bin/sh)" [5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: sudo
+          alert_type: security
+        annotations:
+          summary: "Dangerous sudo command executed by {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} executed a potentially dangerous command: {{ $labels.sudo_command }}"
+          runbook_url: "https://wiki.internal.com/security/dangerous-commands"
+
+      # ==========================================================================
+      # OFF-HOURS SUDO USAGE
+      # ==========================================================================
+
+      - alert: SudoOffHours
+        expr: |
+          count_over_time({job="auth", process="sudo", sudo_result="success"} [1h]) > 0
+          and hour() >= 22
+          or hour() < 6
+        for: 0m
+        labels:
+          severity: warning
+          category: sudo
+          alert_type: monitoring
+        annotations:
+          summary: "Sudo usage outside business hours by {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} executed sudo during off-hours (10 PM - 6 AM). May be legitimate maintenance or suspicious."
+          runbook_url: "https://wiki.internal.com/security/off-hours-activity"
+
+      # ==========================================================================
+      # SUDO TO ROOT
+      # ==========================================================================
+
+      - alert: SudoToRoot
+        expr: |
+          count_over_time({job="auth", process="sudo", sudo_result="success", sudo_target_user="root"} [10m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          category: sudo
+          alert_type: monitoring
+        annotations:
+          summary: "Sudo to root executed by {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} gained root privileges via sudo. Command: {{ $labels.sudo_command }}"
+          runbook_url: "https://wiki.internal.com/security/sudo-root"
+
+      # ==========================================================================
+      # SUDO WITHOUT TTY (SCRIPTED SUDO)
+      # ==========================================================================
+
+      - alert: SudoWithoutTTY
+        expr: |
+          count_over_time({job="auth", process="sudo", sudo_warning="no_tty"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: sudo
+          alert_type: security
+        annotations:
+          summary: "Sudo executed without TTY by {{ $labels.sudo_user }}"
+          description: "User {{ $labels.sudo_user }} executed sudo without a TTY. May indicate scripted/automated sudo or attack."
+          runbook_url: "https://wiki.internal.com/security/sudo-no-tty"

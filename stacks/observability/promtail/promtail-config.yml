@@ -55,10 +55,6 @@ scrape_configs:
           process:
       
       # SSH Authentication Monitoring - 14 Pattern Regex
-      - regex:
-          expression: '^(?P<message>.*)$'
-      - match:
-          selector: '{job="auth", process="sshd"}'
       
       # Pattern 1: Accepted password login
       - regex:
@@ -192,6 +188,69 @@ scrape_configs:
           ssh_ip:
       - labels:
           ssh_event_type: MaxAttemptsExceeded
+      
+      # ==========================================================================
+      # SUDO COMMAND MONITORING (Phase 4)
+      # ==========================================================================
+      - match:
+          selector: '{job="auth", process="sudo"}'
+          stages:
+            # Pattern 1: Successful sudo execution
+            - regex:
+                expression: '^\s*(?P<sudo_user>\w+) : TTY=(?P<sudo_tty>[\w/]+) ; PWD=(?P<sudo_pwd>[^ ]+) ; USER=(?P<sudo_target_user>\w+) ; COMMAND=(?P<sudo_command>.*)$'
+                source: message
+            - labels:
+                sudo_user:
+                sudo_target_user:
+                sudo_command:
+                sudo_tty:
+                sudo_pwd:
+            - labels:
+                sudo_result: success
+            
+            # Pattern 2: Failed sudo (incorrect password)
+            - regex:
+                expression: '^\s*(?P<sudo_user>\w+) : (?P<sudo_attempts>\d+) incorrect password attempt'
+                source: message
+            - labels:
+                sudo_user:
+            - labels:
+                sudo_result: failed
+            
+            # Pattern 3: Sudo session opened
+            - regex:
+                expression: 'pam_unix\(sudo:session\): session opened for user (?P<sudo_target_user>\w+) by (?P<sudo_user>\w+)\(uid=(?P<sudo_uid>\d+)\)'
+                source: message
+            - labels:
+                sudo_user:
+                sudo_target_user:
+            - labels:
+                sudo_result: session_opened
+            
+            # Pattern 4: Sudo session closed
+            - regex:
+                expression: 'pam_unix\(sudo:session\): session closed for user (?P<sudo_target_user>\w+)'
+                source: message
+            - labels:
+                sudo_target_user:
+            - labels:
+                sudo_result: session_closed
+            
+            # Pattern 5: Command not allowed (sudo denial)
+            - regex:
+                expression: '^\s*(?P<sudo_user>\w+) : command not allowed'
+                source: message
+            - labels:
+                sudo_user:
+            - labels:
+                sudo_result: denied
+      
+      # SUDO WITHOUT TTY DETECTION (potential scripted attack)
+      - match:
+          selector: '{job="auth", process="sudo"} |~ "TTY=unknown"'
+          stages:
+            - labels:
+                sudo_warning: no_tty
 
   # Kernel log
   - job_name: kernel
@@ -355,3 +414,215 @@ scrape_configs:
           expression: '/var/lib/docker/containers/(?P<container_id>[^/]+)/.*'
       - labels:
           container_id:
+  
+  # ==========================================================================
+  # AUDITD LOG MONITORING (Phase 4)
+  # User creation, privilege escalation, file modifications
+  # ==========================================================================
+  
+  - job_name: audit
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: audit
+          host: homelab
+          __path__: /var/log/audit/audit.log
+    pipeline_stages:
+      # Parse audit log basic structure
+      - regex:
+          expression: 'type=(?P<audit_type>\w+) msg=audit\((?P<audit_timestamp>[\d\.]+):(?P<audit_id>\d+)\):(?P<audit_message>.*)'
+      
+      - labels:
+          audit_type:
+          audit_id:
+      
+      # Parse timestamp
+      - timestamp:
+          source: audit_timestamp
+          format: Unix
+      
+      # Extract audit key (identifies rule that triggered)
+      - regex:
+          expression: '.*key="(?P<audit_key>[\w_]+)"'
+          source: audit_message
+      - labels:
+          audit_key:
+      
+      # Extract user IDs
+      - regex:
+          expression: '.*auid=(?P<audit_auid>\d+).*uid=(?P<audit_uid>\d+).*gid=(?P<audit_gid>\d+)'
+          source: audit_message
+      - labels:
+          audit_auid:
+          audit_uid:
+      
+      # USER CREATION PARSING (EXECVE type with useradd)
+      - match:
+          selector: '{job="audit", audit_type="EXECVE", audit_key="user_creation"}'
+          stages:
+            - regex:
+                expression: '.*a0="(?P<user_mgmt_command>\w+)".*a2="(?P<new_username>[\w\-]+)"'
+                source: audit_message
+            - labels:
+                user_mgmt_command:
+                new_username:
+            - labels:
+                user_event_type: user_created
+      
+      # USER DELETION PARSING
+      - match:
+          selector: '{job="audit", audit_type="EXECVE", audit_key="user_deletion"}'
+          stages:
+            - regex:
+                expression: '.*a0="(?P<user_mgmt_command>\w+)".*a1="(?P<deleted_username>[\w\-]+)"'
+                source: audit_message
+            - labels:
+                user_mgmt_command:
+                deleted_username:
+            - labels:
+                user_event_type: user_deleted
+      
+      # USER MODIFICATION PARSING
+      - match:
+          selector: '{job="audit", audit_type="EXECVE", audit_key="user_modification"}'
+          stages:
+            - regex:
+                expression: '.*a0="(?P<user_mgmt_command>\w+)"'
+                source: audit_message
+            - labels:
+                user_mgmt_command:
+            - labels:
+                user_event_type: user_modified
+      
+      # PASSWORD CHANGE PARSING
+      - match:
+          selector: '{job="audit", audit_type="EXECVE", audit_key="password_change"}'
+          stages:
+            - regex:
+                expression: '.*a0="(?P<password_command>\w+)"'
+                source: audit_message
+            - labels:
+                password_command:
+            - labels:
+                user_event_type: password_changed
+      
+      # FILE MODIFICATION PARSING (PATH type)
+      - match:
+          selector: '{job="audit", audit_type="PATH"}'
+          stages:
+            - regex:
+                expression: '.*name="(?P<audit_file_path>[^"]+)".*mode=(?P<file_mode>\d+)'
+                source: audit_message
+            - labels:
+                audit_file_path:
+                file_mode:
+      
+      # SUID/SGID BIT CHANGES
+      - match:
+          selector: '{job="audit", audit_key="suid_sgid_set"}'
+          stages:
+            - labels:
+                priv_escalation_type: suid_sgid_set
+      
+      # SUID BINARY TAMPERING
+      - match:
+          selector: '{job="audit", audit_key="suid_binary_change"}'
+          stages:
+            - labels:
+                priv_escalation_type: suid_binary_tamper
+      
+      # SU COMMAND USAGE
+      - match:
+          selector: '{job="audit", audit_key="su_usage"}'
+          stages:
+            - labels:
+                priv_escalation_type: su_executed
+      
+      # CAPABILITY CHANGES
+      - match:
+          selector: '{job="audit", audit_key="capability_change"}'
+          stages:
+            - labels:
+                priv_escalation_type: capability_modified
+      
+      # OWNERSHIP CHANGES
+      - match:
+          selector: '{job="audit", audit_key="ownership_change"}'
+          stages:
+            - regex:
+                expression: '.*a0="(?P<chown_path>[^"]+)"'
+                source: audit_message
+            - labels:
+                chown_path:
+            - labels:
+                priv_escalation_type: ownership_changed
+  
+  # ==========================================================================
+  # ENHANCED SYSLOG MONITORING (Phase 4)
+  # Captures output from AIDE, process monitor, SUID checker via logger
+  # ==========================================================================
+  
+  # NOTE: This extends the existing syslog job above with security tool monitoring
+  # The following pipeline stages should be added to the existing syslog job
+  # For now, creating a separate job to avoid conflicts during initial deployment
+  
+  - job_name: syslog_security
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog_security
+          host: homelab
+          __path__: /var/log/syslog
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\w+)\s+(?P<process>[\w\-\[\]]+):\s+(?P<message>.*)$'
+      - labels:
+          process:
+      - timestamp:
+          source: timestamp
+          format: 'Jan _2 15:04:05'
+      
+      # AIDE EVENTS
+      - match:
+          selector: '{job="syslog_security", process="aide"}'
+          stages:
+            - regex:
+                expression: 'AIDE: (?P<aide_changed>\d+) changed, (?P<aide_added>\d+) added, (?P<aide_removed>\d+) removed'
+                source: message
+            - labels:
+                security_tool: aide
+      
+      # PROCESS MONITOR EVENTS
+      - match:
+          selector: '{job="syslog_security", process="process_monitor"}'
+          stages:
+            - regex:
+                expression: 'New process detected: (?P<new_process_name>\w+)'
+                source: message
+            - labels:
+                new_process_name:
+                security_tool: process_monitor
+      
+      # SUID MONITOR EVENTS
+      - match:
+          selector: '{job="syslog_security", process="suid_monitor"}'
+          stages:
+            - regex:
+                expression: 'NEW SUID/SGID binary detected: (?P<suid_file_path>.+)'
+                source: message
+            - labels:
+                suid_file_path:
+                security_tool: suid_monitor
+      
+      # CAPABILITY MONITOR EVENTS
+      - match:
+          selector: '{job="syslog_security", process="capability_monitor"}'
+          stages:
+            - regex:
+                expression: 'NEW capability detected: (?P<capability_file>.+)'
+                source: message
+            - labels:
+                capability_file:
+                security_tool: capability_monitor

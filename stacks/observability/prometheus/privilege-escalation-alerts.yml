@@ -1,0 +1,123 @@
+# Privilege Escalation Alert Rules
+# Detect SUID/SGID changes, capability modifications, and elevation attempts
+
+groups:
+  - name: privilege_escalation
+    interval: 60s
+    rules:
+      # ==========================================================================
+      # SUID/SGID MONITORING
+      # ==========================================================================
+
+      - alert: NewSUIDBinary
+        expr: suid_sgid_new_count > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: privilege_escalation
+          alert_type: security
+        annotations:
+          summary: "New SUID/SGID binary detected"
+          description: "{{ $value }} new SUID/SGID binaries detected. Check /var/log/syslog for file paths. IMMEDIATE INVESTIGATION REQUIRED."
+          runbook_url: "https://wiki.internal.com/security/new-suid-binary"
+
+      - alert: SUIDRemoved
+        expr: suid_sgid_removed_count > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: privilege_escalation
+          alert_type: monitoring
+        annotations:
+          summary: "SUID/SGID binary removed"
+          description: "{{ $value }} SUID/SGID binaries removed. May be legitimate update or tampering."
+          runbook_url: "https://wiki.internal.com/security/suid-removed"
+
+      - alert: SUIDSGIDSet
+        expr: |
+          count_over_time({job="audit", audit_key="suid_sgid_set"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: privilege_escalation
+          alert_type: security
+        annotations:
+          summary: "SUID/SGID bit set on file"
+          description: "chmod was used to set SUID/SGID on a file by UID {{ $labels.audit_uid }}. Investigate immediately."
+          runbook_url: "https://wiki.internal.com/security/suid-bit-set"
+
+      - alert: SUIDBinaryTampered
+        expr: |
+          count_over_time({job="audit", audit_key="suid_binary_change"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: privilege_escalation
+          alert_type: security
+        annotations:
+          summary: "Critical SUID binary modified"
+          description: "A critical SUID binary (sudo, su, mount, etc.) was modified. File: {{ $labels.audit_file_path }}. CRITICAL SECURITY INCIDENT."
+          runbook_url: "https://wiki.internal.com/security/suid-binary-tampered"
+
+      # ==========================================================================
+      # CAPABILITY MONITORING
+      # ==========================================================================
+
+      - alert: NewCapabilityAssigned
+        expr: file_capabilities_new_count > 0
+        for: 0m
+        labels:
+          severity: high
+          category: privilege_escalation
+          alert_type: security
+        annotations:
+          summary: "New file capability assigned"
+          description: "{{ $value }} new file capabilities detected. Check /var/log/syslog for details."
+          runbook_url: "https://wiki.internal.com/security/new-capability"
+
+      - alert: CapabilityModified
+        expr: |
+          count_over_time({job="audit", audit_key="capability_change"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          category: privilege_escalation
+          alert_type: security
+        annotations:
+          summary: "File capability modified"
+          description: "A file capability was changed by UID {{ $labels.audit_uid }}."
+          runbook_url: "https://wiki.internal.com/security/capability-modified"
+
+      # ==========================================================================
+      # SU COMMAND USAGE
+      # ==========================================================================
+
+      - alert: SuCommandExecuted
+        expr: |
+          count_over_time({job="audit", audit_key="su_usage"} [10m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          category: privilege_escalation
+          alert_type: monitoring
+        annotations:
+          summary: "su command executed"
+          description: "User switched to another account using 'su'. UID: {{ $labels.audit_auid }}."
+          runbook_url: "https://wiki.internal.com/security/su-usage"
+
+      # ==========================================================================
+      # OWNERSHIP CHANGES
+      # ==========================================================================
+
+      - alert: FileOwnershipChanged
+        expr: |
+          count_over_time({job="audit", audit_key="ownership_change"} [5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: privilege_escalation
+          alert_type: monitoring
+        annotations:
+          summary: "Multiple file ownership changes"
+          description: "{{ $value }} files had ownership changed in 5 minutes. May be legitimate or privilege escalation."
+          runbook_url: "https://wiki.internal.com/security/ownership-change"
