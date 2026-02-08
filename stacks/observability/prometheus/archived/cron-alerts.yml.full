@@ -1,0 +1,162 @@
+# CRON Alert Rules
+# Detect scheduled persistence mechanisms and suspicious cron activity
+
+groups:
+  - name: cron_security
+    interval: 30s
+    rules:
+      # ==========================================================================
+      # CRON JOB EXECUTION MONITORING
+      # ==========================================================================
+      - alert: CronJobExecutionSpike
+        expr: |
+          sum(count_over_time({job="syslog", process=~"CRON.*", cron_event_type="job_execution"}[5m])) > 50
+        for: 0m
+        labels:
+          severity: warning
+          category: cron
+          alert_type: security
+        annotations:
+          summary: "Unusual spike in CRON job executions"
+          description: "{{ $value }} CRON jobs executed in the last 5 minutes. This may indicate malicious scheduled tasks."
+          runbook_url: "https://wiki.internal.com/security/cron-spike"
+
+      - alert: CronNewUserActivity
+        expr: |
+          sum by (cron_user) (
+            count_over_time({job="syslog", process=~"CRON.*", cron_event_type="job_execution"}[1h])
+          ) > 0
+          unless
+          sum by (cron_user) (
+            count_over_time({job="syslog", process=~"CRON.*", cron_event_type="job_execution"}[24h] offset 24h)
+          ) > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: cron
+          alert_type: security
+        annotations:
+          summary: "New CRON activity for user {{ $labels.cron_user }}"
+          description: "User {{ $labels.cron_user }} has CRON jobs executing for the first time in 24+ hours. Verify if legitimate."
+          runbook_url: "https://wiki.internal.com/security/new-cron-user"
+
+      # ==========================================================================
+      # CRONTAB MODIFICATION DETECTION
+      # ==========================================================================
+      - alert: CrontabModified
+        expr: |
+          sum(count_over_time({job="syslog", process=~"CRON.*", cron_event_type="crontab_modified"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: cron
+          alert_type: security
+        annotations:
+          summary: "Crontab modification detected for user {{ $labels.cron_user }}"
+          description: "Crontab for user {{ $labels.cron_user }} was modified. Verify this change is authorized."
+          runbook_url: "https://wiki.internal.com/security/crontab-modified"
+
+      - alert: RootCrontabModified
+        expr: |
+          sum(count_over_time({job="syslog", process=~"CRON.*", cron_event_type="crontab_modified", cron_user="root"}[5m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: cron
+          alert_type: security
+        annotations:
+          summary: "CRITICAL: Root crontab modified"
+          description: "Root user crontab was modified. This is a high-risk change requiring immediate verification."
+          runbook_url: "https://wiki.internal.com/security/root-crontab-modified"
+
+      # ==========================================================================
+      # CRON SERVICE MONITORING
+      # ==========================================================================
+      - alert: CronServiceDown
+        expr: node_systemd_unit_state{name="cron.service",state!="active"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          category: cron
+          alert_type: availability
+        annotations:
+          summary: "CRON service is down"
+          description: "CRON service is in {{ $labels.state }} state on {{ $labels.instance }}. Scheduled tasks will not execute."
+          runbook_url: "https://wiki.internal.com/infrastructure/cron-down"
+
+      - alert: CronServiceRestarting
+        expr: increase(node_systemd_unit_restarts{name="cron.service"}[1h]) > 2
+        for: 0m
+        labels:
+          severity: warning
+          category: cron
+          alert_type: availability
+        annotations:
+          summary: "CRON service restarting frequently"
+          description: "CRON service has restarted {{ $value }} times in the last hour. Check for configuration issues."
+          runbook_url: "https://wiki.internal.com/infrastructure/cron-restart"
+
+      # ==========================================================================
+      # CRON ERROR DETECTION
+      # ==========================================================================
+      - alert: CronExecutionErrors
+        expr: |
+          sum(count_over_time({job="syslog", process=~"CRON.*", cron_event_type="error"}[1h])) > 5
+        for: 0m
+        labels:
+          severity: warning
+          category: cron
+          alert_type: operational
+        annotations:
+          summary: "Multiple CRON execution errors detected"
+          description: "{{ $value }} CRON errors in the last hour. Jobs may be failing."
+          runbook_url: "https://wiki.internal.com/operations/cron-errors"
+
+      # ==========================================================================
+      # PERSISTENCE MECHANISM DETECTION
+      # ==========================================================================
+      - alert: SuspiciousCronCommand
+        expr: |
+          sum(count_over_time({job="syslog", process=~"CRON.*", cron_command=~".*(curl|wget|nc|ncat|bash|sh|python|perl|ruby).*"}[1h])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: cron
+          alert_type: security
+        annotations:
+          summary: "Suspicious command detected in CRON job"
+          description: "CRON job contains potentially malicious command patterns (curl/wget/netcat/shells). Investigation required."
+          runbook_url: "https://wiki.internal.com/security/suspicious-cron-command"
+
+      - alert: CronOutboundConnection
+        expr: |
+          sum(count_over_time({job="syslog", process=~"CRON.*", cron_command=~".*(http://|https://|ftp://|\\d+\\.\\d+\\.\\d+\\.\\d+).*"}[1h])) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: cron
+          alert_type: security
+        annotations:
+          summary: "CRON job with outbound connection detected"
+          description: "CRON job appears to make network connections. Verify this behavior is expected."
+          runbook_url: "https://wiki.internal.com/security/cron-outbound"
+
+      # ==========================================================================
+      # UNUSUAL TIMING PATTERNS
+      # ==========================================================================
+      - alert: CronOffHoursActivity
+        expr: |
+          (
+            sum(count_over_time({job="syslog", process=~"CRON.*", cron_event_type="job_execution"}[1h])) > 10
+            and
+            (hour() < 6 or hour() > 22)
+          )
+        for: 0m
+        labels:
+          severity: info
+          category: cron
+          alert_type: anomaly
+        annotations:
+          summary: "High CRON activity outside business hours"
+          description: "{{ $value }} CRON jobs executed between 22:00-06:00. May indicate scheduled attack or unauthorized automation."
+          runbook_url: "https://wiki.internal.com/security/cron-off-hours"

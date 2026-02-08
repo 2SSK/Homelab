@@ -1,13 +1,12 @@
-# User Management Alert Rules (Reduced for Homelab)
-# Focuses on critical user account changes
-# Full version archived in: archived/user-management-alerts.yml.full
+# User Management Alert Rules
+# Monitor user account creation, deletion, and modification
 
 groups:
   - name: user_management
     interval: 30s
     rules:
       # ==========================================================================
-      # USER CREATION (HIGH RISK)
+      # USER CREATION
       # ==========================================================================
 
       - alert: NewUserCreated
@@ -22,6 +21,21 @@ groups:
           summary: "New user account created: {{ $labels.new_username }}"
           description: "User '{{ $labels.new_username }}' was created by UID {{ $labels.audit_auid }}. Verify this is authorized."
           runbook_url: "https://wiki.internal.com/security/user-created"
+
+      - alert: UserCreatedOffHours
+        expr: |
+          count_over_time({job="audit", audit_key="user_creation"} [5m]) > 0
+          and hour() >= 22
+          or hour() < 6
+        for: 0m
+        labels:
+          severity: critical
+          category: user_management
+          alert_type: security
+        annotations:
+          summary: "User created during off-hours: {{ $labels.new_username }}"
+          description: "User '{{ $labels.new_username }}' created outside business hours (10 PM - 6 AM). High risk indicator."
+          runbook_url: "https://wiki.internal.com/security/user-created-offhours"
 
       - alert: RapidUserCreation
         expr: |
@@ -54,18 +68,35 @@ groups:
           runbook_url: "https://wiki.internal.com/security/user-deleted"
 
       # ==========================================================================
-      # SUDO GROUP CHANGES (CRITICAL)
+      # USER MODIFICATION
       # ==========================================================================
 
-      - alert: SudoGroupMembershipChanged
+      - alert: UserModified
         expr: |
-          count_over_time({job="audit", audit_key="sudo_group_change"} [5m]) > 0
+          count_over_time({job="audit", audit_key="user_modification"} [5m]) > 0
         for: 0m
         labels:
-          severity: critical
+          severity: medium
           category: user_management
-          alert_type: security
+          alert_type: monitoring
         annotations:
-          summary: "Sudo group membership changed"
-          description: "User added/removed from sudo/wheel group by UID {{ $labels.audit_auid }}. CRITICAL SECURITY CHANGE."
-          runbook_url: "https://wiki.internal.com/security/sudo-group-change"
+          summary: "User account modified"
+          description: "User account modified by UID {{ $labels.audit_auid }} using {{ $labels.user_mgmt_command }}."
+          runbook_url: "https://wiki.internal.com/security/user-modified"
+
+      # ==========================================================================
+      # PASSWORD CHANGES
+      # ==========================================================================
+
+      - alert: PasswordChanged
+        expr: |
+          count_over_time({job="audit", audit_key="password_change"} [5m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          category: user_management
+          alert_type: monitoring
+        annotations:
+          summary: "User password changed"
+          description: "Password changed by UID {{ $labels.audit_auid }} using {{ $labels.password_command }}."
+          runbook_url: "https://wiki.internal.com/security/password-changed"

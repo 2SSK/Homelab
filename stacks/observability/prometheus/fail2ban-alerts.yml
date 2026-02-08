@@ -1,12 +1,28 @@
-# Fail2Ban Alert Rules
-# Production alerts for Fail2Ban security monitoring
+# Fail2Ban Alert Rules (Reduced for Homelab)
+# Focuses on critical service availability and active attack detection
+# Full version archived in: archived/fail2ban-alerts.yml.full
 
 groups:
   - name: fail2ban_security
     interval: 30s
     rules:
       # ==========================================================================
-      # HIGH BAN RATE DETECTION
+      # SERVICE AVAILABILITY (CRITICAL)
+      # ==========================================================================
+      - alert: Fail2banServiceDown
+        expr: node_systemd_unit_state{name="fail2ban.service",state!="active"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          category: fail2ban
+          alert_type: availability
+        annotations:
+          summary: "Fail2ban service is down"
+          description: "Fail2ban service is in {{ $labels.state }} state. System is unprotected from brute force attacks!"
+          runbook_url: "https://wiki.internal.com/infrastructure/fail2ban-down"
+
+      # ==========================================================================
+      # ACTIVE ATTACK DETECTION
       # ==========================================================================
       - alert: Fail2banHighBanRate
         expr: |
@@ -18,7 +34,7 @@ groups:
           alert_type: security
         annotations:
           summary: "High fail2ban ban rate detected"
-          description: "{{ $value }} IPs banned by fail2ban in the last 5 minutes. This indicates active attacks."
+          description: "{{ $value }} IPs banned by fail2ban in the last 5 minutes. Active attacks in progress."
           runbook_url: "https://wiki.internal.com/security/fail2ban-high-ban-rate"
 
       - alert: Fail2banBanStorm
@@ -35,198 +51,7 @@ groups:
           runbook_url: "https://wiki.internal.com/security/fail2ban-ban-storm"
 
       # ==========================================================================
-      # PERSISTENT ATTACKER DETECTION
-      # ==========================================================================
-      - alert: Fail2banPersistentAttacker
-        expr: |
-          sum by (fail2ban_ip) (
-            count_over_time({job="fail2ban", fail2ban_event="Ban"}[1h])
-          ) > 3
-        for: 0m
-        labels:
-          severity: warning
-          category: fail2ban
-          alert_type: security
-        annotations:
-          summary: "Persistent attacker detected from IP {{ $labels.fail2ban_ip }}"
-          description: "IP {{ $labels.fail2ban_ip }} has been banned {{ $value }} times in the last hour. Consider longer ban duration."
-          runbook_url: "https://wiki.internal.com/security/persistent-attacker"
-
-      - alert: Fail2banChronicAttacker
-        expr: |
-          sum by (fail2ban_ip) (
-            count_over_time({job="fail2ban", fail2ban_event="Ban"}[24h])
-          ) > 10
-        for: 0m
-        labels:
-          severity: critical
-          category: fail2ban
-          alert_type: security
-        annotations:
-          summary: "Chronic attacker detected from IP {{ $labels.fail2ban_ip }}"
-          description: "IP {{ $labels.fail2ban_ip }} has been banned {{ $value }} times in the last 24 hours. Recommend permanent blocking."
-          runbook_url: "https://wiki.internal.com/security/chronic-attacker"
-
-      # ==========================================================================
-      # JAIL-SPECIFIC ALERTS
-      # ==========================================================================
-      - alert: Fail2banCriticalJailDown
-        expr: |
-          (
-            # Check if SSH jail is active
-            sum(count_over_time({job="fail2ban", fail2ban_jail=~"ssh.*", fail2ban_event="Ban"}[1h])) == 0
-            and
-            # But we have SSH failures in auth.log
-            sum(count_over_time({job="auth", ssh_event_type=~"Failed|Invalid"}[1h])) > 10
-          )
-        for: 5m
-        labels:
-          severity: critical
-          category: fail2ban
-          alert_type: availability
-        annotations:
-          summary: "Critical fail2ban jail not responding to SSH attacks"
-          description: "SSH jail is not banning IPs despite {{ $value }} SSH authentication failures. Jail may be misconfigured."
-          runbook_url: "https://wiki.internal.com/security/jail-down"
-
-      - alert: Fail2banActiveJailOverload
-        expr: |
-          sum by (fail2ban_jail) (
-            count_over_time({job="fail2ban", fail2ban_event="Ban"}[1h])
-          ) > 100
-        for: 0m
-        labels:
-          severity: warning
-          category: fail2ban
-          alert_type: security
-        annotations:
-          summary: "Jail {{ $labels.fail2ban_jail }} overloaded with bans"
-          description: "Jail {{ $labels.fail2ban_jail }} has issued {{ $value }} bans in the last hour. Consider tightening filters."
-          runbook_url: "https://wiki.internal.com/security/jail-overload"
-
-      # ==========================================================================
-      # FAIL2BAN SERVICE MONITORING
-      # ==========================================================================
-      - alert: Fail2banServiceDown
-        expr: node_systemd_unit_state{name="fail2ban.service",state!="active"} == 1
-        for: 2m
-        labels:
-          severity: critical
-          category: fail2ban
-          alert_type: availability
-        annotations:
-          summary: "Fail2ban service is down"
-          description: "Fail2ban service is in {{ $labels.state }} state. System is unprotected from brute force attacks!"
-          runbook_url: "https://wiki.internal.com/infrastructure/fail2ban-down"
-
-      - alert: Fail2banRestartingFrequently
-        expr: increase(node_systemd_unit_restarts{name="fail2ban.service"}[1h]) > 3
-        for: 0m
-        labels:
-          severity: warning
-          category: fail2ban
-          alert_type: availability
-        annotations:
-          summary: "Fail2ban service restarting frequently"
-          description: "Fail2ban service has restarted {{ $value }} times in the last hour. Check for configuration errors."
-          runbook_url: "https://wiki.internal.com/infrastructure/fail2ban-restart"
-
-      # ==========================================================================
-      # UNUSUAL BAN PATTERNS
-      # ==========================================================================
-      - alert: Fail2banShortBanDuration
-        expr: |
-          sum by (fail2ban_jail) (
-            count_over_time({job="fail2ban", fail2ban_duration=~"[0-9]+[sm]"}[1h])
-          ) > 20
-        for: 0m
-        labels:
-          severity: info
-          category: fail2ban
-          alert_type: configuration
-        annotations:
-          summary: "Many short-duration bans in jail {{ $labels.fail2ban_jail }}"
-          description: "{{ $value }} bans with short duration (seconds/minutes) in {{ $labels.fail2ban_jail }}. Consider increasing ban time."
-          runbook_url: "https://wiki.internal.com/security/short-ban-duration"
-
-      - alert: Fail2banMultipleJailsActive
-        expr: |
-          count(count_over_time({job="fail2ban", fail2ban_event="Ban"}[5m])) > 5
-        for: 0m
-        labels:
-          severity: warning
-          category: fail2ban
-          alert_type: security
-        annotations:
-          summary: "Multiple fail2ban jails issuing bans"
-          description: "{{ $value }} different jails are actively banning IPs. Coordinated multi-vector attack possible."
-          runbook_url: "https://wiki.internal.com/security/multiple-jails-active"
-
-      # ==========================================================================
-      # GEOGRAPHIC / NETWORK ALERTS
-      # ==========================================================================
-      - alert: Fail2banTorExitNodeAttack
-        expr: |
-          sum by (fail2ban_ip) (
-            count_over_time({job="fail2ban", fail2ban_event="Ban"}[1h])
-          ) > 0
-          and on (fail2ban_ip)
-          # This would require GeoIP enrichment - placeholder for now
-          sum(count_over_time({job="fail2ban", fail2ban_event="Ban"}[1h])) > 0
-        for: 0m
-        labels:
-          severity: info
-          category: fail2ban
-          alert_type: security
-        annotations:
-          summary: "Potential Tor exit node attack"
-          description: "IPs from potentially anonymizing services being banned. May indicate Tor-based attacks."
-          runbook_url: "https://wiki.internal.com/security/tor-exit-attack"
-
-      # ==========================================================================
-      # COMPOUND ALERTS - SSH + FAIL2BAN
-      # ==========================================================================
-      - alert: Fail2banAndSSHCoordinatedAttack
-        expr: |
-          (
-            # High SSH failure rate
-            sum(rate({job="auth", ssh_event_type=~"Failed|Invalid"}[5m])) * 300 > 50
-            and
-            # High fail2ban ban rate
-            sum(rate({job="fail2ban", fail2ban_event="Ban"}[5m])) * 300 > 10
-          )
-        for: 0m
-        labels:
-          severity: critical
-          category: fail2ban
-          alert_type: security
-        annotations:
-          summary: "Coordinated SSH attack with fail2ban response"
-          description: "High SSH failure rate with corresponding fail2ban bans. Attack is being actively blocked."
-          runbook_url: "https://wiki.internal.com/security/coordinated-attack"
-
-      # ==========================================================================
-      # SYSTEM RESOURCE ALERTS
-      # ==========================================================================
-      - alert: Fail2banManyActiveBans
-        expr: |
-          sum by (fail2ban_jail) (
-            count_over_time({job="fail2ban", fail2ban_event="Ban"}[1h])
-          ) - sum by (fail2ban_jail) (
-            count_over_time({job="fail2ban", fail2ban_event="Unban"}[1h])
-          ) > 50
-        for: 0m
-        labels:
-          severity: warning
-          category: fail2ban
-          alert_type: performance
-        annotations:
-          summary: "Many active bans in jail {{ $labels.fail2ban_jail }}"
-          description: "{{ $value }} currently active bans. This may impact firewall performance."
-          runbook_url: "https://wiki.internal.com/security/many-active-bans"
-
-      # ==========================================================================
-      # CONFIGURATION ALERTS
+      # CONFIGURATION / MISCONFIGURATION DETECTION
       # ==========================================================================
       - alert: Fail2banNoBansHighFailures
         expr: |

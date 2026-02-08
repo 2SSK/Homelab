@@ -1,28 +1,13 @@
-# Network Port Alert Rules
-# Detect new listening ports and unexpected service exposure
+# Network Port Alert Rules (Reduced for Homelab)
+# Focuses on critical changes and security issues
+# Full version archived in: archived/port-alerts.yml.full
 
 groups:
   - name: network_exposure
     interval: 30s
     rules:
       # ==========================================================================
-      # TCP SOCKET MONITORING
-      # ==========================================================================
-      - alert: TCPSocketCountChange
-        expr: |
-          abs(delta(node_sockstat_TCP_inuse[5m])) > 5
-        for: 2m
-        labels:
-          severity: info
-          category: network
-          alert_type: monitoring
-        annotations:
-          summary: "Significant change in TCP socket count"
-          description: "TCP socket count changed by {{ $value }} in the last 5 minutes. Current: {{ query \"node_sockstat_TCP_inuse\" | first | value }}"
-          runbook_url: "https://wiki.internal.com/monitoring/socket-change"
-
-      # ==========================================================================
-      # NETWORK CONNECTION STATE MONITORING
+      # NETWORK CONNECTION MONITORING
       # ==========================================================================
       - alert: HighEstablishedConnections
         expr: node_netstat_Tcp_CurrEstab > 1000
@@ -66,135 +51,32 @@ groups:
           description: "{{ $value | printf \"%.1f\" }}% of available sockets in use. System may refuse new connections."
           runbook_url: "https://wiki.internal.com/infrastructure/socket-exhaustion"
 
-      - alert: HighSocketUsage
-        expr: node_sockstat_sockets_used > 10000
+      # ==========================================================================
+      # TIME_WAIT SOCKET ACCUMULATION
+      # ==========================================================================
+      - alert: HighTimeWaitSockets
+        expr: node_sockstat_TCP_tw > 5000
         for: 5m
         labels:
           severity: warning
           category: network
           alert_type: performance
         annotations:
-          summary: "High socket usage detected"
-          description: "{{ $value }} total sockets in use. Monitor for socket leaks."
-          runbook_url: "https://wiki.internal.com/infrastructure/high-socket-usage"
+          summary: "High number of TIME_WAIT sockets"
+          description: "{{ $value }} sockets in TIME_WAIT state. May indicate connection churn or need for tuning."
+          runbook_url: "https://wiki.internal.com/infrastructure/time-wait-sockets"
 
       # ==========================================================================
-      # PORT CHURN DETECTION
+      # UDP ANOMALIES
       # ==========================================================================
-      - alert: HighPortChurnRate
-        expr: |
-          abs(deriv(node_sockstat_TCP_inuse[5m])) > 10
-        for: 5m
-        labels:
-          severity: warning
-          category: network
-          alert_type: anomaly
-        annotations:
-          summary: "High rate of TCP port changes detected"
-          description: "TCP ports are being opened/closed at an unusual rate. May indicate port scanning or service instability."
-          runbook_url: "https://wiki.internal.com/security/port-churn"
-
-      # ==========================================================================
-      # NETWORK ERRORS
-      # ==========================================================================
-      - alert: HighTCPRetransmissions
-        expr: rate(node_netstat_Tcp_RetransSegs[5m]) > 100
-        for: 5m
+      - alert: UDPBufferErrors
+        expr: rate(node_netstat_Udp_RcvbufErrors[5m]) > 1
+        for: 2m
         labels:
           severity: warning
           category: network
           alert_type: performance
         annotations:
-          summary: "High TCP retransmission rate"
-          description: "{{ $value | printf \"%.0f\" }} TCP retransmissions/sec. Network quality issues or congestion."
-          runbook_url: "https://wiki.internal.com/infrastructure/tcp-retransmissions"
-
-      - alert: TCPConnectionResets
-        expr: rate(node_netstat_Tcp_AttemptFails[5m]) > 50
-        for: 5m
-        labels:
-          severity: warning
-          category: network
-          alert_type: performance
-        annotations:
-          summary: "High TCP connection reset rate"
-          description: "{{ $value | printf \"%.0f\" }} TCP connection failures/sec. May indicate service issues or attacks."
-          runbook_url: "https://wiki.internal.com/infrastructure/tcp-resets"
-
-      # ==========================================================================
-      # UDP MONITORING
-      # ==========================================================================
-      - alert: HighUDPSocketUsage
-        expr: node_sockstat_UDP_inuse > 100
-        for: 5m
-        labels:
-          severity: info
-          category: network
-          alert_type: monitoring
-        annotations:
-          summary: "High UDP socket usage"
-          description: "{{ $value }} UDP sockets in use. Verify if expected."
-          runbook_url: "https://wiki.internal.com/monitoring/udp-sockets"
-
-      - alert: UDPErrorRate
-        expr: rate(node_netstat_Udp_InErrors[5m]) > 10
-        for: 5m
-        labels:
-          severity: warning
-          category: network
-          alert_type: performance
-        annotations:
-          summary: "High UDP error rate"
-          description: "{{ $value | printf \"%.0f\" }} UDP errors/sec. Check for UDP service issues."
-          runbook_url: "https://wiki.internal.com/infrastructure/udp-errors"
-
-      # ==========================================================================
-      # LISTENING SERVICES (requires textfile collector)
-      # ==========================================================================
-      # Note: These alerts require the textfile collector implementation
-      # Uncomment after implementing the port scanning script
-
-      # - alert: NewListeningPort
-      #   expr: |
-      #     (
-      #       node_network_listening_ports{address="0.0.0.0"} == 1
-      #       unless
-      #       node_network_listening_ports{address="0.0.0.0"} offset 1h == 1
-      #     )
-      #   for: 5m
-      #   labels:
-      #     severity: warning
-      #     category: network
-      #     alert_type: security
-      #   annotations:
-      #     summary: "New listening port detected: {{ $labels.port }}/{{ $labels.protocol }}"
-      #     description: "Port {{ $labels.port }} ({{ $labels.protocol }}) is now listening on {{ $labels.address }}. Verify this service is authorized."
-      #     runbook_url: "https://wiki.internal.com/security/new-listening-port"
-
-      # - alert: HighRiskPortListening
-      #   expr: |
-      #     node_network_listening_ports{port=~"(23|21|25|110|143|3389|5900|1433|3306|5432|6379|27017|9200)"} == 1
-      #   for: 1m
-      #   labels:
-      #     severity: critical
-      #     category: network
-      #     alert_type: security
-      #   annotations:
-      #     summary: "High-risk port {{ $labels.port }}/{{ $labels.protocol }} is listening"
-      #     description: "Port {{ $labels.port }} is commonly targeted by attackers. Ensure this is intentional and properly secured."
-      #     runbook_url: "https://wiki.internal.com/security/high-risk-port"
-
-      # - alert: UnexpectedWildcardBinding
-      #   expr: |
-      #     node_network_listening_ports{address="0.0.0.0"} == 1
-      #     unless
-      #     node_network_listening_ports{address="0.0.0.0",port=~"(22|80|443|9090|9100|3000|3100|8080|9093)"} == 1
-      #   for: 2m
-      #   labels:
-      #     severity: warning
-      #     category: network
-      #     alert_type: security
-      #   annotations:
-      #     summary: "Unexpected wildcard (0.0.0.0) port binding: {{ $labels.port }}"
-      #     description: "Port {{ $labels.port }} is bound to all interfaces (0.0.0.0). Expected ports: 22,80,443,9090,9100,3000,3100,8080,9093"
-      #     runbook_url: "https://wiki.internal.com/security/wildcard-binding"
+          summary: "UDP receive buffer errors detected"
+          description: "{{ $value | printf \"%.2f\" }} UDP receive buffer errors/sec. Packets are being dropped."
+          runbook_url: "https://wiki.internal.com/infrastructure/udp-buffer-errors"

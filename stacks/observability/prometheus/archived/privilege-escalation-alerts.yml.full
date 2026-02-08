@@ -1,13 +1,12 @@
-# Privilege Escalation Alert Rules (Reduced for Homelab)
-# Focuses on critical SUID/capability changes
-# Full version archived in: archived/privilege-escalation-alerts.yml.full
+# Privilege Escalation Alert Rules
+# Detect SUID/SGID changes, capability modifications, and elevation attempts
 
 groups:
   - name: privilege_escalation
     interval: 60s
     rules:
       # ==========================================================================
-      # SUID/SGID MONITORING (CRITICAL)
+      # SUID/SGID MONITORING
       # ==========================================================================
 
       - alert: NewSUIDBinary
@@ -21,6 +20,18 @@ groups:
           summary: "New SUID/SGID binary detected"
           description: "{{ $value }} new SUID/SGID binaries detected. Check /var/log/syslog for file paths. IMMEDIATE INVESTIGATION REQUIRED."
           runbook_url: "https://wiki.internal.com/security/new-suid-binary"
+
+      - alert: SUIDRemoved
+        expr: suid_sgid_removed_count > 0
+        for: 5m
+        labels:
+          severity: warning
+          category: privilege_escalation
+          alert_type: monitoring
+        annotations:
+          summary: "SUID/SGID binary removed"
+          description: "{{ $value }} SUID/SGID binaries removed. May be legitimate update or tampering."
+          runbook_url: "https://wiki.internal.com/security/suid-removed"
 
       - alert: SUIDSGIDSet
         expr: |
@@ -76,3 +87,37 @@ groups:
           summary: "File capability modified"
           description: "A file capability was changed by UID {{ $labels.audit_uid }}."
           runbook_url: "https://wiki.internal.com/security/capability-modified"
+
+      # ==========================================================================
+      # SU COMMAND USAGE
+      # ==========================================================================
+
+      - alert: SuCommandExecuted
+        expr: |
+          count_over_time({job="audit", audit_key="su_usage"} [10m]) > 0
+        for: 0m
+        labels:
+          severity: info
+          category: privilege_escalation
+          alert_type: monitoring
+        annotations:
+          summary: "su command executed"
+          description: "User switched to another account using 'su'. UID: {{ $labels.audit_auid }}."
+          runbook_url: "https://wiki.internal.com/security/su-usage"
+
+      # ==========================================================================
+      # OWNERSHIP CHANGES
+      # ==========================================================================
+
+      - alert: FileOwnershipChanged
+        expr: |
+          count_over_time({job="audit", audit_key="ownership_change"} [5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: privilege_escalation
+          alert_type: monitoring
+        annotations:
+          summary: "Multiple file ownership changes"
+          description: "{{ $value }} files had ownership changed in 5 minutes. May be legitimate or privilege escalation."
+          runbook_url: "https://wiki.internal.com/security/ownership-change"
