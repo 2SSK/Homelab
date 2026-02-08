@@ -515,12 +515,16 @@ du -sh /srv/data/observability/prometheus
 | Document | Purpose | Audience |
 |----------|---------|----------|
 | **[README.md](./README.md)** (this file) | Overview and architecture | Everyone |
+| **[QUICKSTART.md](./QUICKSTART.md)** | ⚡ Quick start guide (10 min) | Impatient admins |
 | **[INSTALLATION.md](./INSTALLATION.md)** | Step-by-step setup guide | New users |
 | **[CONFIGURATION.md](./CONFIGURATION.md)** | Configuration reference | Operators |
 | **[ALERTS.md](./ALERTS.md)** | Alert rules and customization | Security teams |
+| **[ALERTMANAGER_EXAMPLES.md](./ALERTMANAGER_EXAMPLES.md)** | Notification setup (Slack, email, etc.) | Operators |
 | **[DASHBOARDS.md](./DASHBOARDS.md)** | Dashboard guide | Daily users |
 | **[OPERATIONS.md](./OPERATIONS.md)** | Day-to-day operations | Operators |
 | **[MONITORING.md](./MONITORING.md)** | What to monitor and when | Everyone |
+| **[MIGRATION.md](./MIGRATION.md)** | Upgrade from previous versions | Existing users |
+| **[CHANGELOG.md](./CHANGELOG.md)** | Version history and changes | Everyone |
 | **[CONTRIBUTING.md](./CONTRIBUTING.md)** | Contributing improvements | Contributors |
 
 ---
@@ -549,6 +553,10 @@ du -sh /srv/data/observability/prometheus
 ./cli/homelab.sh observability restart
 ./cli/homelab.sh observability validate
 ./cli/homelab.sh observability logs
+
+# Using helper scripts
+./stacks/observability/scripts/health-check.sh     # Full health check
+./stacks/observability/scripts/validate-alerts.sh  # Validate alert rules
 
 # Direct systemd
 sudo systemctl status observability
