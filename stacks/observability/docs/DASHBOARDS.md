@@ -57,6 +57,9 @@
 
 **Location:** `grafana/provisioning/dashboards/json/homelab-system.json`
 
+![Homelab System Overview Dashboard](../../../docs/assets/images/grafana-system-overview-dashboard.png)
+*Figure 1: Homelab System Overview dashboard showing CPU, memory, disk, network, and system metrics at a glance*
+
 **Panels (9 total):**
 
 1. **CPU Usage** - Current CPU utilization (gauge)
@@ -119,6 +122,9 @@
 **Purpose:** Monitor service health and failures across your system
 
 **Location:** `grafana/provisioning/dashboards/json/systemd-services.json`
+
+![Systemd Services Dashboard](../../../docs/assets/images/grafana-systemd-dashboard.png)
+*Figure 2: Systemd Services dashboard displaying service status, failures, and resource usage*
 
 **Panels (14 total):**
 

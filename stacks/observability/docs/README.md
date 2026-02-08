@@ -97,17 +97,43 @@ This is a complete, battle-tested observability solution optimized for homelab e
 └─────────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼
-                    Accessible via SSH Tunnel
-                  ssh -L 3000:localhost:3000 homelab
+                     Accessible via SSH Tunnel
 ```
 
 ### Data Flow
 
-1. **Metrics Collection**: Node Exporter and cAdvisor expose metrics → Prometheus scrapes every 30s
-2. **Log Collection**: Promtail tails log files → Ships to Loki for indexing
-3. **Alert Evaluation**: Prometheus evaluates 97 alert rules every 30s → Fires to Alertmanager
-4. **Notification Routing**: Alertmanager groups/deduplicates → Sends email/Slack based on severity
-5. **Visualization**: Grafana queries Prometheus/Loki → Renders 6 pre-built dashboards
+1. **Metrics Collection:**
+   - Node Exporter → Host metrics (CPU, memory, disk, network)
+   - cAdvisor → Container metrics (Docker stats)
+   - Prometheus → Scrapes exporters every 15s
+
+2. **Log Collection:**
+   - Promtail → Tails logs from `/var/log/` and Docker
+   - Loki → Stores logs with labels for efficient queries
+
+3. **Alerting:**
+   - Prometheus → Evaluates 97 alert rules every 30s
+   - Alertmanager → Routes alerts to email/Slack/PagerDuty
+
+4. **Visualization:**
+   - Grafana → Queries Prometheus (metrics) and Loki (logs)
+   - 6 pre-built dashboards for different use cases
+
+### Screenshots
+
+**System Overview Dashboard:**
+
+![Homelab System Overview](../../../docs/assets/images/grafana-system-overview-dashboard.png)
+
+*Real-time visibility into CPU, memory, disk, network, and system health at a glance.*
+
+---
+
+**Systemd Services Dashboard:**
+
+![Systemd Services Monitoring](../../../docs/assets/images/grafana-systemd-dashboard.png)
+
+*Monitor service status, failures, restarts, and resource usage across all systemd units.*
 
 ---
 

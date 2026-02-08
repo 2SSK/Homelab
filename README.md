@@ -49,13 +49,22 @@ homelab maintain tethering      # Update USB tethering config
 
 ## Documentation
 
-| Guide                                        | Description                               |
-| -------------------------------------------- | ----------------------------------------- |
-| [Installation](docs/installation.md)         | Full bootstrap process and file locations |
-| [Dotfiles](docs/dotfiles.md)                 | Bash/vim configuration and customization  |
-| [CLI Reference](docs/cli.md)                 | All commands and Makefile targets         |
-| [Observability](docs/observability.md)       | Prometheus, Grafana, Loki monitoring      |
-| [systemd-networkd](docs/systemd-networkd.md) | USB tethering network setup               |
+| Guide                                                     | Description                               |
+| --------------------------------------------------------- | ----------------------------------------- |
+| [Installation](docs/installation.md)                      | Full bootstrap process and file locations |
+| [Dotfiles](docs/dotfiles.md)                              | Bash/vim configuration and customization  |
+| [CLI Reference](docs/cli.md)                              | All commands and Makefile targets         |
+| [Observability Stack](stacks/observability/docs/README.md)| Complete monitoring stack documentation   |
+| [systemd-networkd](docs/systemd-networkd.md)              | USB tethering network setup               |
+
+**Observability Documentation** (8 detailed guides):
+- [Installation Guide](stacks/observability/docs/INSTALLATION.md) - Step-by-step setup
+- [Configuration Reference](stacks/observability/docs/CONFIGURATION.md) - All settings explained
+- [Alert Rules Guide](stacks/observability/docs/ALERTS.md) - 97 curated security/system alerts
+- [Dashboard Guide](stacks/observability/docs/DASHBOARDS.md) - 6 pre-built dashboards
+- [Operations Manual](stacks/observability/docs/OPERATIONS.md) - Daily procedures
+- [Monitoring Guide](stacks/observability/docs/MONITORING.md) - What to watch
+- [Contributing](stacks/observability/docs/CONTRIBUTING.md) - How to improve
 
 ## Project Structure
 
@@ -87,8 +96,15 @@ Full monitoring with resource constraints for low-power servers:
 | Loki | Logs | 256 MB | ✓ |
 | Alertmanager | Email alerts | 64 MB | ✓ |
 
+**Recent Improvements (Feb 2026):**
+- ✅ **Alert Optimization**: Reduced from 122 to 97 rules (20.5% reduction) to prevent alert fatigue
+- ✅ **Production Documentation**: 8 comprehensive guides (~39,000 words)
+- ✅ **Dashboard Cleanup**: Removed redundant dashboards (7 → 6)
+- ✅ **Self-Monitoring**: Added Dead Man's Switch and capacity alerts
+
 > All services include Docker healthchecks for automatic restart on failure.
 > Grafana datasources use stable UIDs for dashboard portability.
+> Complete documentation available at `stacks/observability/docs/`
 
 ## Dotfiles Highlights
 
