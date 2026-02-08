@@ -18,7 +18,7 @@ groups:
           alert_type: security
         annotations:
           summary: "AIDE detected file system changes"
-          description: "AIDE integrity check failed. {{ aide_changed_files }} changed, {{ aide_added_files }} added, {{ aide_removed_files }} removed."
+          description: "AIDE integrity check failed. Check /var/log/aide/aide.log for details."
           runbook_url: "https://wiki.internal.com/security/aide-changes"
 
       - alert: CriticalFileModified
@@ -103,15 +103,16 @@ groups:
           description: "The /etc/shadow password file was modified. User: {{ $labels.audit_uid }}. CRITICAL."
           runbook_url: "https://wiki.internal.com/security/shadow-modified"
 
-      - alert: SudoersModified
-        expr: |
-          count_over_time({job="syslog"} |~ "/etc/sudoers" [5m]) > 0
-        for: 0m
-        labels:
-          severity: critical
-          category: file_integrity
-          alert_type: security
-        annotations:
-          summary: "Sudoers configuration modified"
-          description: "The /etc/sudoers or /etc/sudoers.d/ was modified. Check who made changes."
-          runbook_url: "https://wiki.internal.com/security/sudoers-modified"
+      # TODO: Implement in Grafana Unified Alerting (uses LogQL, not compatible with Prometheus)
+      # - alert: SudoersModified
+      #   expr: |
+      #     count_over_time({job="syslog"} |~ "/etc/sudoers" [5m]) > 0
+      #   for: 0m
+      #   labels:
+      #     severity: critical
+      #     category: file_integrity
+      #     alert_type: security
+      #   annotations:
+      #     summary: "Sudoers configuration modified"
+      #     description: "The /etc/sudoers or /etc/sudoers.d/ was modified. Check who made changes."
+      #     runbook_url: "https://wiki.internal.com/security/sudoers-modified"

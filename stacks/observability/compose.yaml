@@ -47,6 +47,14 @@ services:
       - ./prometheus/systemd-alerts.yml:/etc/prometheus/systemd-alerts.yml:ro
       - ./prometheus/ssh-alerts.yml:/etc/prometheus/ssh-alerts.yml:ro
       - ./prometheus/fail2ban-alerts.yml:/etc/prometheus/fail2ban-alerts.yml:ro
+      - ./prometheus/cron-alerts.yml:/etc/prometheus/cron-alerts.yml:ro
+      - ./prometheus/port-alerts.yml:/etc/prometheus/port-alerts.yml:ro
+      - ./prometheus/docker-security-alerts.yml:/etc/prometheus/docker-security-alerts.yml:ro
+      - ./prometheus/sudo-alerts.yml:/etc/prometheus/sudo-alerts.yml:ro
+      - ./prometheus/file-integrity-alerts.yml:/etc/prometheus/file-integrity-alerts.yml:ro
+      - ./prometheus/process-alerts.yml:/etc/prometheus/process-alerts.yml:ro
+      - ./prometheus/user-management-alerts.yml:/etc/prometheus/user-management-alerts.yml:ro
+      - ./prometheus/privilege-escalation-alerts.yml:/etc/prometheus/privilege-escalation-alerts.yml:ro
       - /srv/data/observability/prometheus:/prometheus
     ports:
       - "127.0.0.1:9090:9090"

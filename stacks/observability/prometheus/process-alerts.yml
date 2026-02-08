@@ -25,44 +25,45 @@ groups:
       # HIGH-RISK PROCESSES
       # ==========================================================================
 
-      - alert: ReverseShellDetected
-        expr: |
-          count_over_time({job="syslog", process="process_monitor"} |~ "(nc|ncat|socat|bash -i|/dev/tcp)" [5m]) > 0
-        for: 0m
-        labels:
-          severity: critical
-          category: process
-          alert_type: security
-        annotations:
-          summary: "Potential reverse shell detected"
-          description: "Process indicative of reverse shell detected: {{ $labels.new_process_name }}"
-          runbook_url: "https://wiki.internal.com/security/reverse-shell"
+      # TODO: Implement in Grafana Unified Alerting (uses LogQL, not compatible with Prometheus)
+      # - alert: ReverseShellDetected
+      #   expr: |
+      #     count_over_time({job="syslog", process="process_monitor"} |~ "(nc|ncat|socat|bash -i|/dev/tcp)" [5m]) > 0
+      #   for: 0m
+      #   labels:
+      #     severity: critical
+      #     category: process
+      #     alert_type: security
+      #   annotations:
+      #     summary: "Potential reverse shell detected"
+      #     description: "Process indicative of reverse shell detected: {{ $labels.new_process_name }}"
+      #     runbook_url: "https://wiki.internal.com/security/reverse-shell"
 
-      - alert: CryptoMinerDetected
-        expr: |
-          count_over_time({job="syslog", process="process_monitor"} |~ "(xmrig|minerd|cpuminer|ethminer|cgminer)" [5m]) > 0
-        for: 0m
-        labels:
-          severity: critical
-          category: process
-          alert_type: security
-        annotations:
-          summary: "Cryptocurrency miner detected"
-          description: "Crypto mining process detected: {{ $labels.new_process_name }}. Potential compromise."
-          runbook_url: "https://wiki.internal.com/security/crypto-miner"
+      # - alert: CryptoMinerDetected
+      #   expr: |
+      #     count_over_time({job="syslog", process="process_monitor"} |~ "(xmrig|minerd|cpuminer|ethminer|cgminer)" [5m]) > 0
+      #   for: 0m
+      #   labels:
+      #     severity: critical
+      #     category: process
+      #     alert_type: security
+      #   annotations:
+      #     summary: "Cryptocurrency miner detected"
+      #     description: "Crypto mining process detected: {{ $labels.new_process_name }}. Potential compromise."
+      #     runbook_url: "https://wiki.internal.com/security/crypto-miner"
 
-      - alert: NetworkScannerDetected
-        expr: |
-          count_over_time({job="syslog", process="process_monitor"} |~ "(nmap|masscan|zmap|nikto)" [5m]) > 0
-        for: 0m
-        labels:
-          severity: high
-          category: process
-          alert_type: security
-        annotations:
-          summary: "Network scanning tool detected"
-          description: "Network scanner detected: {{ $labels.new_process_name }}. May be legitimate or recon activity."
-          runbook_url: "https://wiki.internal.com/security/network-scanner"
+      # - alert: NetworkScannerDetected
+      #   expr: |
+      #     count_over_time({job="syslog", process="process_monitor"} |~ "(nmap|masscan|zmap|nikto)" [5m]) > 0
+      #   for: 0m
+      #   labels:
+      #     severity: high
+      #     category: process
+      #     alert_type: security
+      #   annotations:
+      #     summary: "Network scanning tool detected"
+      #     description: "Network scanner detected: {{ $labels.new_process_name }}. May be legitimate or recon activity."
+      #     runbook_url: "https://wiki.internal.com/security/network-scanner"
 
       # ==========================================================================
       # PROCESS COUNT ANOMALIES
@@ -85,15 +86,16 @@ groups:
       # SHORT-LIVED PROCESSES (POTENTIAL PERSISTENCE)
       # ==========================================================================
 
-      - alert: ShortLivedProcesses
-        expr: |
-          count_over_time({job="syslog", process="process_monitor"} |~ "New process detected" [5m]) > 10
-        for: 5m
-        labels:
-          severity: info
-          category: process
-          alert_type: monitoring
-        annotations:
-          summary: "High rate of short-lived processes"
-          description: "{{ $value }} new processes detected in 5 minutes. May be normal activity or persistence mechanism."
-          runbook_url: "https://wiki.internal.com/security/short-lived-processes"
+      # TODO: Implement in Grafana Unified Alerting (uses LogQL, not compatible with Prometheus)
+      # - alert: ShortLivedProcesses
+      #   expr: |
+      #     count_over_time({job="syslog", process="process_monitor"} |~ "New process detected" [5m]) > 10
+      #   for: 5m
+      #   labels:
+      #     severity: info
+      #     category: process
+      #     alert_type: monitoring
+      #   annotations:
+      #     summary: "High rate of short-lived processes"
+      #     description: "{{ $value }} new processes detected in 5 minutes. May be normal activity or persistence mechanism."
+      #     runbook_url: "https://wiki.internal.com/security/short-lived-processes"

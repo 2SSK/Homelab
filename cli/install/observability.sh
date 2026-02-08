@@ -71,16 +71,13 @@ validate_prometheus_config() {
         return 1
     fi
     
-    # Validate using promtool in container
+    # Validate using promtool in container - check ALL alert rule files
     log_info "Validating alert rules syntax..."
     if ! docker run --rm \
         -v "${SOURCE_DIR}/prometheus:/prometheus:ro" \
         --entrypoint /bin/promtool \
         prom/prometheus:v2.48.1 \
-        check rules /prometheus/alerts.yml \
-                    /prometheus/systemd-alerts.yml \
-                    /prometheus/ssh-alerts.yml \
-                    /prometheus/fail2ban-alerts.yml 2>&1 | grep -q "SUCCESS"; then
+        check rules /prometheus/*.yml 2>&1 | grep -q "SUCCESS"; then
         log_error "Prometheus alert rules validation failed"
         log_info "Run promtool manually to see detailed errors:"
         log_info "  docker run --rm -v ${SOURCE_DIR}/prometheus:/prometheus:ro \\"

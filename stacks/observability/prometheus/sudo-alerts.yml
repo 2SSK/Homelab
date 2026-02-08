@@ -52,18 +52,19 @@ groups:
       # DANGEROUS SUDO COMMANDS
       # ==========================================================================
 
-      - alert: DangerousSudoCommand
-        expr: |
-          count_over_time({job="auth", process="sudo", sudo_result="success"} |~ "COMMAND=.*(rm -rf|mkfs|dd if=|fdisk|parted|:/bin/bash|:/bin/sh)" [5m]) > 0
-        for: 0m
-        labels:
-          severity: critical
-          category: sudo
-          alert_type: security
-        annotations:
-          summary: "Dangerous sudo command executed by {{ $labels.sudo_user }}"
-          description: "User {{ $labels.sudo_user }} executed a potentially dangerous command: {{ $labels.sudo_command }}"
-          runbook_url: "https://wiki.internal.com/security/dangerous-commands"
+      # TODO: Implement in Grafana Unified Alerting (uses LogQL, not compatible with Prometheus)
+      # - alert: DangerousSudoCommand
+      #   expr: |
+      #     count_over_time({job="auth", process="sudo", sudo_result="success"} |~ "COMMAND=.*(rm -rf|mkfs|dd if=|fdisk|parted|:/bin/bash|:/bin/sh)" [5m]) > 0
+      #   for: 0m
+      #   labels:
+      #     severity: critical
+      #     category: sudo
+      #     alert_type: security
+      #   annotations:
+      #     summary: "Dangerous sudo command executed by {{ $labels.sudo_user }}"
+      #     description: "User {{ $labels.sudo_user }} executed a potentially dangerous command: {{ $labels.sudo_command }}"
+      #     runbook_url: "https://wiki.internal.com/security/dangerous-commands"
 
       # ==========================================================================
       # OFF-HOURS SUDO USAGE

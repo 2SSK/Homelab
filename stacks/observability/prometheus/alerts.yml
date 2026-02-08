@@ -192,3 +192,82 @@ groups:
         annotations:
           summary: "Alertmanager is down"
           description: "Alertmanager is not responding"
+
+  # ==========================================================================
+  # OBSERVABILITY STACK HEALTH & CAPACITY
+  # ==========================================================================
+  - name: observability_health
+    rules:
+      # Dead man's switch - ensures alerting is working
+      - alert: DeadMansSwitch
+        expr: vector(1)
+        labels:
+          severity: info
+        annotations:
+          summary: "Observability stack is healthy"
+          description: "This alert always fires - if you stop receiving it, alerting is broken"
+
+      # Prometheus TSDB approaching capacity
+      - alert: PrometheusTSDBNearFull
+        expr: prometheus_tsdb_storage_blocks_bytes / 5000000000 > 0.8
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus TSDB at {{ $value | humanizePercentage }} capacity"
+          description: "Prometheus time series database is using {{ $value | humanizePercentage }} of 5GB limit"
+
+      # Prometheus TSDB critical
+      - alert: PrometheusTSDBCritical
+        expr: prometheus_tsdb_storage_blocks_bytes / 5000000000 > 0.9
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus TSDB at {{ $value | humanizePercentage }} capacity - CRITICAL"
+          description: "Prometheus TSDB will stop accepting new data soon. Clean up old data or increase retention."
+
+      # Observability data directory disk space low
+      - alert: ObservabilityDiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint=~"/srv/data/observability|/srv"} 
+          / node_filesystem_size_bytes{mountpoint=~"/srv/data/observability|/srv"}) < 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Observability disk space low on {{ $labels.mountpoint }}"
+          description: "Only {{ $value | humanizePercentage }} space remaining on {{ $labels.mountpoint }}"
+
+      # Observability data directory disk space critical
+      - alert: ObservabilityDiskSpaceCritical
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint=~"/srv/data/observability|/srv"} 
+          / node_filesystem_size_bytes{mountpoint=~"/srv/data/observability|/srv"}) < 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Observability disk space CRITICAL on {{ $labels.mountpoint }}"
+          description: "Only {{ $value | humanizePercentage }} space remaining - immediate action required"
+
+      # Loki ingestion rate too high
+      - alert: LokiHighIngestionRate
+        expr: rate(loki_ingester_bytes_received_total[5m]) > 10485760  # 10MB/s
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki ingesting {{ $value | humanize1024 }}B/s - unusually high"
+          description: "Check for log storms or increase Loki resources"
+
+      # Alert manager notification failures
+      - alert: AlertmanagerNotificationsFailing
+        expr: rate(alertmanager_notifications_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager failing to send notifications"
+          description: "{{ $value }} notification failures per second - check SMTP config"
+

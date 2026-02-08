@@ -16,8 +16,8 @@ ExecStart=/usr/bin/docker compose up -d --remove-orphans
 # Stop the stack gracefully
 ExecStop=/usr/bin/docker compose down
 
-# Reload: restart containers (useful after config changes)
-ExecReload=/usr/bin/docker compose restart
+# Reload: Use Prometheus hot reload endpoint for zero-downtime config updates
+ExecReload=/bin/bash -c 'curl -X POST http://localhost:9090/-/reload && /usr/bin/docker compose restart grafana promtail'
 
 # Logging
 StandardOutput=journal
