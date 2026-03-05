@@ -1,0 +1,11 @@
+[Unit]
+Description=Homelab backup job
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/homelab-backup/env
+ExecStart=/usr/local/bin/backup.sh
+TimeoutStartSec=2h
+Nice=10

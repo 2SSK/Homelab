@@ -1,0 +1,33 @@
+name: Backup Restore Test (self-hosted)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stage-and-verify:
+    name: Stage and verify latest snapshot
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stage latest snapshot
+        run: |
+          # This action assumes the self-hosted runner has restic installed and the RESTIC_* env configured
+          ./backup/restore.sh stage latest
+
+      - name: Run verification
+        run: |
+          ./backup/verify_backup.sh
+
+      - name: Upload artifacts (if any)
+        uses: actions/upload-artifact@v4
+        with:
+          name: restore-report
+          path: |
+            /var/backups/homelab/*/restore-report-*.json
+
+# Notes for operators:
+# - Configure your self-hosted runner with RESTIC_REPOSITORY and RESTIC_PASSWORD_FILE in the runner's environment
+# - Ensure the runner user can run restic and has access to the backup mount
+# - This workflow is for non-destructive staging & verification (not for destructive restores)
