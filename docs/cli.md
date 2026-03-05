@@ -170,6 +170,21 @@ which homelab
 homelab help
 ```
 
+### Backup
+
+Backup helper commands are available via the homelab CLI and wrap the repository backup scripts. Examples:
+
+```bash
+# Run a one-off backup (orchestrated)
+homelab backup run
+
+# Install systemd units and enable timers for scheduled backups and prune
+homelab backup install-systemd
+sudo systemctl enable --now homelab-backup.timer homelab-prune.timer
+```
+
+Note: the backup scripts are stored under `stacks/backup/` (versioned in the repository). The CLI will prefer `stacks/backup/` but also supports legacy `backup/` layout if present. For full operator guidance see `docs/backup-and-restore.md`.
+
 ## Examples
 
 ### Fresh Server Setup
