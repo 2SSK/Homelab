@@ -5,8 +5,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 TMP_RESTORE_DIR_BASE="/tmp/homelab-restore"
 
+# Look for restic.env in script directory first, then /etc/homelab for systemd installations
 if [ -f "$SCRIPT_DIR/restic.env" ]; then
     . "$SCRIPT_DIR/restic.env"
+elif [ -f "/etc/homelab/restic.env" ]; then
+    . "/etc/homelab/restic.env"
 fi
 
 REPO="${RESTIC_REPOSITORY:-/mnt/backup/restic}"

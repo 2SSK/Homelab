@@ -14,11 +14,11 @@ jobs:
       - name: Stage latest snapshot
         run: |
           # This action assumes the self-hosted runner has restic installed and the RESTIC_* env configured
-          ./backup/restore.sh stage latest
+          ./stacks/backup/restore.sh stage latest
 
       - name: Run verification
         run: |
-          ./backup/verify_backup.sh
+          ./stacks/backup/verify_backup.sh
 
       - name: Upload artifacts (if any)
         uses: actions/upload-artifact@v4

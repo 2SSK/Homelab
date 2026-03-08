@@ -34,11 +34,15 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-if [ ! -f "$SCRIPT_DIR/restic.env" ]; then
-    echo "ERROR: restic.env not found in $SCRIPT_DIR. Copy restic.env.example and create secure values."
+# Look for restic.env in script directory first, then /etc/homelab for systemd installations
+if [ -f "$SCRIPT_DIR/restic.env" ]; then
+    . "$SCRIPT_DIR/restic.env"
+elif [ -f "/etc/homelab/restic.env" ]; then
+    . "/etc/homelab/restic.env"
+else
+    echo "ERROR: restic.env not found in $SCRIPT_DIR or /etc/homelab. Copy restic.env.example and create secure values."
     exit 2
 fi
-. "$SCRIPT_DIR/restic.env"
 
 if [ -z "${RESTIC_REPOSITORY:-}" ]; then
     echo "ERROR: RESTIC_REPOSITORY not set in restic.env"

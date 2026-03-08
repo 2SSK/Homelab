@@ -25,14 +25,14 @@ backup_check_restic_env() {
 backup_install_systemd_units() {
     repo_root=${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}
 
-    # Prefer stacks/observability/systemd over homelab/systemd
-    src_dir="$repo_root/stacks/observability/systemd"
+    # Look in stacks/backup/systemd for backup units
+    src_dir="$repo_root/stacks/backup/systemd"
     if [[ ! -d "$src_dir" ]]; then
         src_dir="$repo_root/homelab/systemd"
     fi
 
     if [[ ! -d "$src_dir" ]]; then
-        echo "Source systemd directory not found in stacks/observability/systemd or homelab/systemd"
+        echo "Source systemd directory not found in stacks/backup/systemd or homelab/systemd"
         return 1
     fi
 

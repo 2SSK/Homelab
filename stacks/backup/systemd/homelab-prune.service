@@ -5,7 +5,8 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-EnvironmentFile=/etc/homelab-backup/env
-ExecStart=/usr/bin/restic -r $RESTIC_REPOSITORY forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6
+EnvironmentFile=/etc/homelab/restic.env
+ExecStart=/usr/bin/restic -r ${RESTIC_REPOSITORY} forget --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 6
 TimeoutStartSec=3h
 Nice=10
+User=root

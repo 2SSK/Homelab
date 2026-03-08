@@ -87,24 +87,33 @@ install-backup:
 	@echo "Installing backup scripts and systemd units (requires sudo)..."
 	# Copy scripts to /usr/local/bin
 	@sudo install -d /usr/local/bin
-	@for f in backup/*.sh backup/*.env.example backup/excludes.txt; do \
+	@for f in stacks/backup/*.sh stacks/backup/excludes.txt; do \
 		[ -f $$f ] || continue; \
 		echo "Installing $$f -> /usr/local/bin/"; \
 		sudo cp -a $$f /usr/local/bin/; \
-		sudo chmod +x /usr/local/bin/$$(basename $$f) || true; \
+		sudo chmod +x /usr/local/bin/$$(basename $$f .sh) || true; \
 	done
-	# Install systemd units from stacks/observability/systemd (if present)
-	@if [ -d stacks/observability/systemd ]; then \
+	# Install systemd units from stacks/backup/systemd
+	@if [ -d stacks/backup/systemd ]; then \
 		echo "Copying systemd unit files to /etc/systemd/system/"; \
-		sudo cp -a stacks/observability/systemd/* /etc/systemd/system/ || true; \
+		sudo cp -a stacks/backup/systemd/* /etc/systemd/system/ || true; \
 		sudo systemctl daemon-reload || true; \
 		echo "Systemd units copied. To enable timers/services run: sudo systemctl enable --now homelab-backup.timer homelab-prune.timer (optional)"; \
 	else \
-		echo "No systemd units found at stacks/observability/systemd; skipping."; \
+		echo "No systemd units found at stacks/backup/systemd; skipping."; \
 	fi
-	# Create /etc/homelab and placeholder restic.pass with secure perms
-	@echo "Creating /etc/homelab and placeholder restic.pass (you must populate this securely).";
+	# Create /etc/homelab directory
+	@echo "Creating /etc/homelab directory and restic.env from template.";
 	@sudo install -d -m 0750 /etc/homelab
+	# Copy restic.env to /etc/homelab if it exists in stacks/backup
+	@if [ -f stacks/backup/restic.env ]; then \
+		echo "Copying restic.env to /etc/homelab/restic.env"; \
+		sudo cp -a stacks/backup/restic.env /etc/homelab/restic.env; \
+		sudo chmod 640 /etc/homelab/restic.env; \
+	elif [ -f stacks/backup/restic.env.example ]; then \
+		echo "Note: restic.env not found. Copy stacks/backup/restic.env.example to /etc/homelab/restic.env and configure it."; \
+	fi
+	# Create placeholder restic.pass if needed
 	@if [ ! -f /etc/homelab/restic.pass ]; then \
 		echo "(placeholder) restic password file created at /etc/homelab/restic.pass"; \
 		sudo sh -c 'umask 077 && : > /etc/homelab/restic.pass'; \
@@ -112,10 +121,10 @@ install-backup:
 	else \
 		echo "/etc/homelab/restic.pass already exists; leaving in place."; \
 	fi
-	@echo "install-backup complete. Review /etc/homelab/restic.pass and populate with your RESTIC_PASSWORD or set RESTIC_PASSWORD_FILE in restic.env.";
+	@echo "install-backup complete. Review /etc/homelab/restic.env and populate with your RESTIC_REPOSITORY and RESTIC_PASSWORD or RESTIC_PASSWORD_FILE.";
 
 # Run a dry-run of the backup to validate environment (no secrets required)
 backup-test:
 	@echo "Running backup in DRY_RUN mode..."
-	@DRY_RUN=1 ./backup/backup.sh || true
+	@DRY_RUN=1 ./stacks/backup/backup.sh || true
 	@echo "Dry-run complete. Check output above for issues."

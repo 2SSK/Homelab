@@ -5,7 +5,8 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-EnvironmentFile=/etc/homelab-backup/env
-ExecStart=/usr/local/bin/backup.sh
+EnvironmentFile=/etc/homelab/restic.env
+ExecStart=/usr/local/bin/backup
 TimeoutStartSec=2h
 Nice=10
+User=root
