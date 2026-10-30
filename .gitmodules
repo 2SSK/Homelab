@@ -1,0 +1,3 @@
+[submodule "vpslab"]
+	path = vpslab
+	url = https://github.com/2SSK/vpslab.git
